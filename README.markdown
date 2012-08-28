@@ -11,16 +11,75 @@
 
 [Maximite]: http://geoffg.net/maximite.html
 
+
+Процессор
+=========
+
+Частота Intel 8080
+------------------
+
+    1.78MHz (16/9)
+
+    1,780,000Hz
+
+    T = 1 / 1780000 = 0.0000005625s = 0.0005625ms = 0.5625mks = 5.625us
+
+    T = 1 / 2000000 = 0.0000005000s = 0.0005000ms = 0.5000msk = 5us
+
+Частота PIC32
+-------------
+
+    80MHz = 80,000,000
+
+    T = 1 / 80000000 = 0.0000000125s = 0.0000125ms = 0.0125mks = 0.125us
+
+    PIC32_FREQ = 80000000
+    I8080_RK86_FREQ = 2000000
+
+Длительность такта I8080 в тактах PIC32
+---------------------------------------
+
+    RK86_I8080_PERIOD = PIC32_FREQ / I8080_RK86_FREQ = ~40
+
+
 Видео
 =====
 
 Программно создается видео сигнал VGA. Подробности в файле `video.c`. 
 Эмуляция экрана РК (знакогенератора и курсора) -- файл `rk86_video.c`.
 
+В пикселях:
+
+    480 x 432
+
+В знакоместах:
+
+    480 / 6 = 80
+    300 / 80 = 30
+
+Экран РК86
+----------
+
+    screen_width = 78
+    screen_height = 30
+
+    char_width = 6
+    char_height = 8
+    char_height_gap = 2
+
+    cursor_width = char_width
+    cursor_height = 1
+
+    canvas.width = screen_width * char_width * scale_x
+    canvas.height = screen_height * (char_height + char_height_gap) * scale_y
+
+
 Клавиатура
 ==========
 
-Стандартный PS/2 протокол.
+- Стандартный PS/2 протокол.
+- [Коды клавиш](http://www.computer-engineering.org/ps2keyboard/scancodes2.html).
+
 
 Звук
 ====
