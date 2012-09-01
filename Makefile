@@ -86,7 +86,7 @@ hex:
 	$(CC_PREFIX)-bin2hex $(IMAGE).out
 
 load:
-	./mphidflash -r -v 04D8 -p FA8D -n -w $(IMAGE).hex
+	mphidflash -r -v 04D8 -p FA8D -n -w $(IMAGE).hex
 
 clean:
 	-rm $(OBJS)
