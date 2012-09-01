@@ -171,6 +171,7 @@ int main(int argc, char* argv[]) {
     p = line + strlen(line) - 1;
     while (p != line && (*p == '\r' || *p == '\n')) *p-- = 0;
 
+    fprintf(stderr, "-> %s\n", line);
     dump_file(line);
     processed_files += 1;
   }
