@@ -94,7 +94,7 @@ int sdcard_load_rk86_file(const char* name, int offset) {
                    name, start, end, sz);
 
     if (start < 0 || start > 0xffff || end < start || end > 0xffff) {
-        console_printf("ERROR: Invalid file parameters\r\n");
+        Console_printf("ERROR: Invalid file parameters\r\n");
         FSfclose(f);
         return -1;
     }
@@ -141,14 +141,24 @@ void sdcard_load_binary_file(const char* name, char* buf, int const buf_sz) {
     console_printf("Loaded successfully %04X bytes\r\n", loaded);
 }
 
+#define MAX_LS_FILES 300
+
+static int cmp_name(void const* p1, void const* p2) {
+    char const* r1 = (char const*)p1;
+    char const* r2 = (char const*)p2;
+    return strcmp(r1, r2);
+}
+
 void sdcard_ls(void) {
     SearchRec file;
+    char files[MAX_LS_FILES][13];
+    int loaded = 0;
     int i, j = 0;
 
     if (!sdcard_init()) return;
 
     i = FindFirst("*.*", ATTR_READ_ONLY | ATTR_ARCHIVE, &file);
-    while (i != -1) {
+    while (i != -1 && loaded < MAX_LS_FILES) {
         int err = FSerror();
         if (err != 0) {
             console_printf("ERROR: %d\n\r", err);
@@ -156,15 +166,26 @@ void sdcard_ls(void) {
         }
 
         if (file.filename[0] != '.') {
-            console_printf("%-14s ", file.filename);
-            j += 1;
-            if (j == 5) {
-                console_printf("\r\n");
-                j = 0;
-            }
+            memset(files[loaded], 0, sizeof(files[loaded]));
+            strncpy(files[loaded], file.filename, sizeof(files[loaded]) - 1);
+            loaded += 1;
         }
 
         i = FindNext(&file);
+    }
+
+    if (i != -1)
+        console_printf("Too many files (>%d)\r\n", MAX_LS_FILES);
+
+    qsort(&files[0], loaded, sizeof(files[0]), &cmp_name);
+
+    for (i = 0; i < loaded; ++i) {
+        console_printf("%-14s ", files[i]);
+        j += 1;
+        if (j == 5) {
+            console_printf("\r\n");
+            j = 0;
+        }
     }
     if (j)
         console_printf("\r\n");
