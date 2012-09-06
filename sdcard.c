@@ -94,7 +94,7 @@ int sdcard_load_rk86_file(const char* name, int offset) {
                    name, start, end, sz);
 
     if (start < 0 || start > 0xffff || end < start || end > 0xffff) {
-        Console_printf("ERROR: Invalid file parameters\r\n");
+        console_printf("ERROR: Invalid file parameters\r\n");
         FSfclose(f);
         return -1;
     }
