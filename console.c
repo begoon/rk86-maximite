@@ -36,6 +36,12 @@ void console_printf(const char* fmt, ...) {
     usb_send_string(buf);
 }
 
+static int hex(const char* s) {
+    int r = 0;
+    sscanf(s, "%02X", &r);
+    return r;
+}
+
 void process_console() {
     static char cmd[256] = { 0 };
     static int i = -1;
@@ -48,7 +54,8 @@ void process_console() {
         i = 0;
         return;
     }
-    if (ch != '\r') {
+    if (i == 0 && (ch == '\n' || ch == '\r')) return;
+    if (ch != '\r' && ch != '\n') {
         usb_send_char(ch);
         if (ch == '\b' && i > 0) {
             i -= 1;
@@ -58,13 +65,14 @@ void process_console() {
         }
         return;
     }
-    console_printf("\n\r");
     cmd[i] = 0;
     // Trim trailing blanks and tabs.
     while (i > 0 && (cmd[i - 1] == ' ' || cmd[i - 1] == '\t')) {
         i -= 1;
         cmd[i] = 0;
     }
+    if (i == 0) return;
+    console_printf("\n\r");
     i = 0;
 
     // The code below is really ugly. It does need to be re-written using
@@ -72,7 +80,25 @@ void process_console() {
     // from the buffer, then count and extract the arguments if they're
     // provided, and finally try to find an appropriate candiate in the
     // command table and call it passing the arguments into it.
-    if (!strcmp(cmd, "reset")) {
+    if (strlen(cmd) > 1 + 2 + 4 + 2 + 2 && cmd[0] == ':') {
+        int len, addr, type = -1;
+        if (sscanf(cmd, ":%02x%04x%02x", &len, &addr, &type) == 3) {
+            if (type == 0) {
+                int const end = 9 + len * 2;
+                unsigned char sum;
+                for (sum = 0, i = 1; i < end; sum += hex(cmd + i), i += 2);
+                sum = 0x100 - sum;
+                if (hex(cmd + end) != sum) {
+                    console_printf("Bad checksum, expected %02X, actual %02X\r\n",
+                                    hex(cmd + end), sum);
+                } else {
+                    unsigned char* mem = rk86_memory();
+                    for(i = 9; i < end; i += 2)
+                        *mem++ = hex(cmd + i);
+                }
+            }
+        }
+    } else if (!strcmp(cmd, "reset")) {
         maximite_reset();
     } else if (!strcmp(cmd, "?")) {
         console_printf("?");
@@ -109,6 +135,6 @@ void process_console() {
         i8080_pic32_print_cpu_info();
     } else if (!memcmp(cmd, "video", 3)) {
         rk86_hardware_print_screen_settings();
-    } else usb_send_string("?");
+    } else console_printf("?");
     console_printf("> ");
 }
