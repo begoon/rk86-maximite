@@ -44,36 +44,27 @@ static int hex(const char* s) {
 
 void process_console() {
     static char cmd[256] = { 0 };
-    static int i = -1;
+    static int cmd_i = 0;
     int ch = usb_inkey();
     if (ch == -1) return;
-    if (i == -1) {
-        // First time character is received from USB, so we print
-        // out the prompt.
-        usb_send_string("RADIO-86RK CONSOLE\n\r\n\r> ");
-        i = 0;
-        return;
-    }
-    if (i == 0 && (ch == '\n' || ch == '\r')) return;
+    if (cmd_i == 0 && (ch == '\n' || ch == '\r')) return;
     if (ch != '\r' && ch != '\n') {
-        usb_send_char(ch);
-        if (ch == '\b' && i > 0) {
-            i -= 1;
-        } else if (i < sizeof(cmd) - 1) {
-            cmd[i] = ch;
-            i += 1;
+        if (ch == '\b' && cmd_i > 0) {
+            cmd_i -= 1;
+        } else if (cmd_i < sizeof(cmd) - 1) {
+            cmd[cmd_i] = ch;
+            cmd_i += 1;
         }
         return;
     }
-    cmd[i] = 0;
+    cmd[cmd_i] = 0;
     // Trim trailing blanks and tabs.
-    while (i > 0 && (cmd[i - 1] == ' ' || cmd[i - 1] == '\t')) {
-        i -= 1;
-        cmd[i] = 0;
+    while (cmd_i > 0 && (cmd[cmd_i - 1] == ' ' || cmd[cmd_i - 1] == '\t')) {
+        cmd_i -= 1;
+        cmd[cmd_i] = 0;
     }
-    if (i == 0) return;
-    console_printf("\n\r");
-    i = 0;
+    if (cmd_i == 0) return;
+    cmd_i = 0;
 
     // The code below is really ugly. It does need to be re-written using
     // a table of commands. The parser should extract the command name
@@ -81,27 +72,30 @@ void process_console() {
     // provided, and finally try to find an appropriate candiate in the
     // command table and call it passing the arguments into it.
     if (strlen(cmd) > 1 + 2 + 4 + 2 + 2 && cmd[0] == ':') {
-        int len, addr, type = -1;
-        if (sscanf(cmd, ":%02x%04x%02x", &len, &addr, &type) == 3) {
+        int len = 0, addr = 0, type = -1;
+        if (sscanf(cmd, ":%02X%04X%02X", &len, &addr, &type) == 3) {
             if (type == 0) {
                 int const end = 9 + len * 2;
                 unsigned char sum;
+                int i;
                 for (sum = 0, i = 1; i < end; sum += hex(cmd + i), i += 2);
                 sum = 0x100 - sum;
                 if (hex(cmd + end) != sum) {
-                    console_printf("Bad checksum, expected %02X, actual %02X\r\n",
-                                    hex(cmd + end), sum);
+                    console_printf("ERROR, bad checksum, expected %02X, "
+                                   "actual %02X\r\n", hex(cmd + end), sum);
                 } else {
-                    unsigned char* mem = rk86_memory();
+                    unsigned char* mem = rk86_memory() + addr;
+                    int i;
                     for(i = 9; i < end; i += 2)
                         *mem++ = hex(cmd + i);
+                    console_printf("OK\r\n");
                 }
+                return;
             }
         }
     } else if (!strcmp(cmd, "reset")) {
         maximite_reset();
     } else if (!strcmp(cmd, "?")) {
-        console_printf("?");
     } else if (!memcmp(cmd, "load ", 5) && strlen(cmd) > 5) {
         sdcard_load_rk86_file(cmd + 5, -1);
     } else if (!memcmp(cmd, "image ", 6) && strlen(cmd) > 6) {
@@ -136,5 +130,5 @@ void process_console() {
     } else if (!memcmp(cmd, "video", 3)) {
         rk86_hardware_print_screen_settings();
     } else console_printf("?");
-    console_printf("> ");
+    console_printf("OK\n\r");
 }

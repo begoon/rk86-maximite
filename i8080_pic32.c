@@ -81,10 +81,10 @@ void i8080_pic32_run() {
 }
 
 void i8080_pic32_print_cpu_info() {
-    console_printf("I8080 FREQUENCY    : %d\n\r"
-                   "PIC32 FREQUENCY    : %d\n\r"
-                   "I8080 CYCLE PERIOD : %d\n\r"
-                   "EMULATOR ADVANCE   : %d (%X)\n\r",
+    console_printf("I8080 FREQUENCY    : %d\r\n"
+                   "PIC32 FREQUENCY    : %d\r\n"
+                   "I8080 CYCLE PERIOD : %d\r\n"
+                   "EMULATOR ADVANCE   : %d (%X)\r\n",
                    I8080_FREQ,
                    BUSFREQ,
                    I8080_CYCLE_PERIOD,
