@@ -333,7 +333,7 @@ extract_byte:
   call extract_bit
   jz extract_byte_counter_1     ; counter is 1
   
-  ; Decode counter from four bits: 1 D3 D2 D1 
+  ; Decode the counter from 4 bits: 1 D3 D2 D1 
   ; N = D3*4 + D2*2 + D1 + 2
   xra a
   call extract_bit
