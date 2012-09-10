@@ -48,7 +48,7 @@ prev:
   jp selector
   mvi m, 59
   jmp selector
-  
+
 next:
   lxi h, level
   inr m
@@ -57,10 +57,10 @@ next:
   jp selector
   mvi m, 0
   jmp selector
-  
+
 level:
   db 0
-  
+
 game:
   lda level
   call print_level
@@ -84,7 +84,7 @@ game_inkey:
   cpi ' '
   jz selector_cls
   jmp game_inkey
-  
+
 end_game:
   lhld player_addr
   mvi m, ' '
@@ -95,7 +95,7 @@ end_game:
   mvi c, 1fh
   call monitor_putchar
   jmp next
-  
+
 move:
   lhld player_addr
   dad d
@@ -117,7 +117,7 @@ go_ahead:
   mvi m, 9
   shld player_addr
   jmp game_inkey
-  
+
 barrel_ahead:
   dad d
   mov a, m
@@ -128,7 +128,7 @@ barrel_ahead:
   mvi b, '&'
   jz shift_barrel
   jmp game_inkey
-  
+
 shift_barrel:
   lhld player_addr
   mvi m, ' '
@@ -138,7 +138,7 @@ shift_barrel:
   dad d
   mov m, b         ; '*' or '&'
   jmp game_inkey
-  
+
 print_level:
   push psw
   push b
@@ -160,12 +160,12 @@ print_level:
   dad h
   lxi d, levels
   dad d
-  
+
   mov a, m
   inx h
   mov h, m
   mov l, a
-  
+
   mov e, m
   mvi a, 64
   sub e
@@ -185,12 +185,12 @@ print_level:
   lhld offset_xy
   shld player_xy
   pop h
-  
+
   mov b, e
   mvi c, 0                             ; The initial repeat counter is 0.
   mvi a, 01h                   
   sta extract_bit_mask                 ; The initial bit mask is 0x01.
-  
+
 print_level_height_loop:
   push h
   lhld offset_xy
@@ -205,7 +205,7 @@ print_level_width_loop:
   jz mark_barrel_place
   cpi '&'
   jz mark_barrel_place
-  
+
 print_level_character:
   push b
   mov c, a
@@ -223,13 +223,13 @@ print_level_character:
   mov l, m
   mov h, a
   xchg
-  
+
   lhld player_xy
   dad d
   call set_cursor
   lhld monitor32_cursor_addr
   shld player_addr
-  
+
   mvi m, 9
 
   pop h
@@ -242,26 +242,26 @@ mark_barrel_place:
   push h
   push d
   push psw
-  
+
   lhld monitor32_cursor_addr
   xchg
-  
+
   lhld current_barrel
   mov m, e
   inx h
   mov m, d
   inx h
   shld current_barrel
-  
+
   lda barrel_count
   inr a
   sta barrel_count
-  
+
   pop psw
   pop d
   pop h
   jmp print_level_character
-  
+
 check_barrels:
   push h
   push d
@@ -295,7 +295,7 @@ check_barrels_loop_prolog:
 check_barrels_restore:
   mvi m, '.'
   jmp check_barrels_loop_prolog
-  
+
 ; H - X
 ; L - Y  
 set_cursor:
@@ -313,7 +313,7 @@ set_cursor:
   pop d
   pop h
   ret
-  
+
 set_cursor_msg:
   db 1bh, 59h, 20h, 20h, 0
 
@@ -332,7 +332,7 @@ extract_byte:
   inr c                         ; C = 0
   call extract_bit
   jz extract_byte_counter_1     ; counter is 1
-  
+
   ; Decode the counter from 4 bits: 1 D3 D2 D1 
   ; N = D3*4 + D2*2 + D1 + 2
   xra a
@@ -350,16 +350,16 @@ extract_byte_d2_0:
 extract_byte_d1_0:
   inr a
   mov c, a
-  
+
 extract_byte_counter_1:
   call extract_bit
   jz extract_byte_value_0
-  
+
   mvi a, '*'      ; 10
   sta current_byte
   call extract_bit
   rz
-  
+
   call extract_bit
   mvi a, '.'      ; 110
   sta current_byte
@@ -395,7 +395,7 @@ extract_bit_1:
 
 extract_bit_keep_a:
   db 0
-  
+
 extract_bit_mask:
   db 01h
 
@@ -424,9 +424,9 @@ print_dec_skip_0:
   pop b
   pop psw
   ret
-  
+
 print_dec_tmp db 0
-  
+
 number_of_maze_msg:
   db 1bh, 59h, (25/2) + 20h, (64-number_of_maze_msg_sz)/2 + 20h
 number_of_maze_text:
