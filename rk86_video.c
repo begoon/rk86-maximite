@@ -104,7 +104,7 @@ void rk86_video_configure_screen(int size_x, int size_y) {
 // This function draws a character based on using a bitmap font.
 // I wanted to make this function to be fast, so I manually moved out
 // the invariants from the loops. The compiler may also do this but 
-// the free version of XC32 1.0 only allows -O1 optimization,
+// the free version of XC32 1.0 only allows -O1 optimization.
 void rk86_video_draw_char(int x, int y, int c) {
     char const* bitmap = rk86_font + (c & 0x7f) * 8;
     int offset_y = y * (char_height + char_height_gap);
