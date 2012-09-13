@@ -12,4 +12,4 @@ run:
 	CMD="go 0000" rk86load
 
 clean:
-	-rm $(IMAGE).hex $(IMAGE).bin
+	-rm $(IMAGE).hex $(IMAGE).bin $(IMAGE).lst
