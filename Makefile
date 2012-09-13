@@ -21,7 +21,7 @@ ifeq ($(CHIPKIT32),1)
   SCRIPT=Maximite.ld.chipkit32
 else
   CC_PREFIX=$(XC32_PREFIX)
-  CC_O=-O3 \
+  CC_O=-O3 -fipa-sra \
     -funroll-loops \
     -finline-functions \
     -fstrict-aliasing \
