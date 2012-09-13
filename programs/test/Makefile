@@ -3,7 +3,7 @@ all: build load run
 IMAGE=test
 
 build:
-	asm8080 $(IMAGE).asm
+	asm8080 -l$(IMAGE).lst $(IMAGE).asm
 
 load:
 	rk86load $(IMAGE).hex
