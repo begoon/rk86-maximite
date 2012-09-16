@@ -9,4 +9,4 @@ check:
 	diff $(IMAGE).bin ../rom/files/mon32.bin
 
 clean:
-	-rm $(IMAGE).hex $(IMAGE).bin $(IMAGE).lst
+	-rm $(IMAGE).hex $(IMAGE).bin

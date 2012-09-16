@@ -1,0 +1,1736 @@
+            76 D0	vid_mem          equ 76d0h
+            76 CF	stack            equ 76CFh
+			
+            76 00	monitor_area     equ 7600h
+            76 5F	monitor_area_end equ 765Fh
+			
+            76 00	cursor_addr      equ 7600h
+            76 02	cursor_xy        equ 7602h
+            76 04	cursor_seq       equ 7604h
+            76 06	ruslat_flag      equ 7606h                  ; 0 - lat, ff - rus
+            76 1C	stack_ptr        equ 761Ch
+            76 31	memlim           equ 7631h
+            76 33	kbd_buf          equ 7633h
+			
+			
+            F8 00	                org 0F800h
+			
+			; --------------------------------------------------------------
+			
+			start:
+    21 F800 C3 36 F8	                jmp     entry_start
+			; --------------------------------------------------------------
+			
+			getc:
+    25 F803 C3 63 FE	                jmp     entry_getc
+			; --------------------------------------------------------------
+			
+			inpb:
+    29 F806 C3 98 FB	                jmp     entry_inpb
+			; --------------------------------------------------------------
+			
+			putc:
+    33 F809 C3 BA FC	                jmp     entry_putc
+			; --------------------------------------------------------------
+			
+			outb:
+    37 F80C C3 46 FC	                jmp     entry_outb
+			; --------------------------------------------------------------
+			
+			temp:
+    41 F80F C3 BA FC	                jmp     entry_putc
+			; --------------------------------------------------------------
+			
+			kbhit:
+    45 F812 C3 01 FE	                jmp     entry_kbhit
+			; --------------------------------------------------------------
+			
+			hexb:
+    49 F815 C3 A5 FC	                jmp     entry_hexb
+			; --------------------------------------------------------------
+			
+			puts:
+    53 F818 C3 22 F9	                jmp     entry_puts
+			; --------------------------------------------------------------
+			
+			scan_kbd:
+    57 F81B C3 72 FE	                jmp     entry_scan_kbd
+			; --------------------------------------------------------------
+			
+			getxy:
+    61 F81E C3 7B FA	                jmp     entry_getxy
+			; --------------------------------------------------------------
+			
+			curc:
+    65 F821 C3 7F FA	                jmp     entry_curc
+			; --------------------------------------------------------------
+			
+			inpblock:
+    69 F824 C3 B6 FA	                jmp     entry_inpblock
+			; --------------------------------------------------------------
+			
+			outblock:
+    73 F827 C3 49 FB	                jmp     entry_outblock
+			; --------------------------------------------------------------
+			
+			chksum:
+    77 F82A C3 16 FB	                jmp     entry_chksum
+			; --------------------------------------------------------------
+			
+			video:
+    81 F82D C3 CE FA	                jmp     entry_video
+			; --------------------------------------------------------------
+			
+			getlim:
+    85 F830 C3 52 FF	                jmp     entry_getlim
+			; --------------------------------------------------------------
+			
+			setlim:
+    89 F833 C3 56 FF	                jmp     entry_setlim
+			; --------------------------------------------------------------
+			
+			entry_start:
+    93 F836 3E 8A	                mvi     a, 8Ah ; 'Š'    ; CODE XREF: F800j
+    94 F838 32 03 80	                sta     8003h
+			
+    96 F83B 31 CF 76	                lxi     sp, stack
+			
+    98 F83E CD CE FA	                call    entry_video     ; start video
+			
+   100 F841 21 00 76	                lxi     h, monitor_area
+   101 F844 11 5F 76	                lxi     d, monitor_area_end
+   102 F847 0E 00	                mvi     c, 0
+   103 F849 CD ED F9	                call    fill_hl_de_c    ; fill HL to DE by C
+			
+   105 F84C 21 CF 76	                lxi     h, stack
+   106 F84F 22 1C 76	                shld    stack_ptr
+			
+   108 F852 21 5A FF	                lxi     h, RadioPrompt
+   109 F855 CD 22 F9	                call    entry_puts      ; put title
+			
+   111 F858 CD CE FA	                call    entry_video
+			
+   113 F85B 21 FF 75	                lxi     h, monitor_area - 1
+   114 F85E 22 31 76	                shld    memlim
+			
+   116 F861 21 2A 1D	                lxi     h, 1D2Ah
+   117 F864 22 2F 76	                shld    762Fh
+   118 F867 3E C3	                mvi     a, 0C3h ; 'Ã'   ; JMP instruction
+   119 F869 32 26 76	                sta     7626h
+			
+			prompt_loop:
+   122 F86C 31 CF 76	                lxi     sp, stack       ; CODE XREF: F90Bj FAB3j FFC9j FFD0j
+			
+   124 F86F 21 66 FF	                lxi     h, Prompt
+   125 F872 CD 22 F9	                call    entry_puts
+			
+   127 F875 32 02 80	                sta     8002h
+   128 F878 3D		                dcr     a
+   129 F879 32 02 A0	                sta     0A002h
+			
+   131 F87C CD EE F8	                call    loc_0_F8EE
+   132 F87F 21 6C F8	                lxi     h, prompt_loop
+   133 F882 E5		                push    h
+   134 F883 21 33 76	                lxi     h, kbd_buf
+   135 F886 7E		                mov     a, m
+   136 F887 FE 58	                cpi     58h ; 'X'
+   137 F889 CA D3 FF	                jz      print_regs
+   138 F88C FE 55	                cpi     55h ; 'U'
+   139 F88E CA 00 F0	                jz      0F000h          ; !?
+   140 F891 F5		                push    psw
+   141 F892 CD 2C F9	                call    loc_0_F92C
+   142 F895 2A 2B 76	                lhld    762Bh
+   143 F898 4D		                mov     c, l
+   144 F899 44		                mov     b, h
+   145 F89A 2A 29 76	                lhld    7629h
+   146 F89D EB		                xchg
+   147 F89E 2A 27 76	                lhld    7627h
+   148 F8A1 F1		                pop     psw
+   149 F8A2 FE 44	                cpi     44h ; 'D'
+   150 F8A4 CA C5 F9	                jz      loc_0_F9C5
+   151 F8A7 FE 43	                cpi     43h ; 'C'
+   152 F8A9 CA D7 F9	                jz      loc_0_F9D7
+   153 F8AC FE 46	                cpi     46h ; 'F'
+   154 F8AE CA ED F9	                jz      fill_hl_de_c
+   155 F8B1 FE 53	                cpi     53h ; 'S'
+   156 F8B3 CA F4 F9	                jz      loc_0_F9F4
+   157 F8B6 FE 54	                cpi     54h ; 'T'
+   158 F8B8 CA FF F9	                jz      loc_0_F9FF
+   159 F8BB FE 4D	                cpi     4Dh ; 'M'
+   160 F8BD CA 26 FA	                jz      loc_0_FA26
+   161 F8C0 FE 47	                cpi     47h ; 'G'
+   162 F8C2 CA 3F FA	                jz      loc_0_FA3F
+   163 F8C5 FE 49	                cpi     49h ; 'I'
+   164 F8C7 CA 86 FA	                jz      loc_0_FA86
+   165 F8CA FE 4F	                cpi     4Fh ; 'O'
+   166 F8CC CA 2D FB	                jz      loc_0_FB2D
+   167 F8CF FE 4C	                cpi     4Ch ; 'L'
+   168 F8D1 CA 08 FA	                jz      loc_0_FA08
+   169 F8D4 FE 52	                cpi     52h ; 'R'
+   170 F8D6 CA 68 FA	                jz      loc_0_FA68
+   171 F8D9 C3 00 F0	                jmp     0F000h          ; ?!
+			; --------------------------------------------------------------
+			
+			back_kbd_buf:
+   175 F8DC 3E 33	                mvi     a, 33h ; '3'    ; CODE XREF: F8F8j F8FDj
+   176 F8DE BD		                cmp     l
+   177 F8DF CA F1 F8	                jz      loc_0_F8F1
+   178 F8E2 E5		                push    h
+   179 F8E3 21 9E FF	                lxi     h, BackClr
+   180 F8E6 CD 22 F9	                call    entry_puts
+   181 F8E9 E1		                pop     h
+   182 F8EA 2B		                dcx     h
+   183 F8EB C3 F3 F8	                jmp     kbd_buf_loop
+			; --------------------------------------------------------------
+			
+			loc_0_F8EE:
+   187 F8EE 21 33 76	                lxi     h, kbd_buf        ; CODE XREF: F87Cp FA2Dp FFE7p
+			
+			loc_0_F8F1:
+   190 F8F1 06 00	                mvi     b, 0            ; CODE XREF: F8DFj
+			
+			kbd_buf_loop:
+   193 F8F3 CD 63 FE	                call    entry_getc      ; CODE XREF: F8EBj F917j
+			
+   195 F8F6 FE 08	                cpi     8               ; backspace ?
+   196 F8F8 CA DC F8	                jz      back_kbd_buf
+   197 F8FB FE 7F	                cpi     7Fh             ; backspace ?
+   198 F8FD CA DC F8	                jz      back_kbd_buf
+			
+   200 F900 C4 B9 FC	                cnz     loc_0_FCB9
+   201 F903 77		                mov     m, a
+   202 F904 FE 0D	                cpi     0Dh
+   203 F906 CA 1A F9	                jz      loc_0_F91A
+   204 F909 FE 2E	                cpi     2Eh ; '.'
+   205 F90B CA 6C F8	                jz      prompt_loop
+   206 F90E 06 FF	                mvi     b, 0FFh
+   207 F910 3E 52	                mvi     a, 52h ; 'R'
+   208 F912 BD		                cmp     l
+   209 F913 CA AE FA	                jz      loc_0_FAAE
+   210 F916 23		                inx     h
+   211 F917 C3 F3 F8	                jmp     kbd_buf_loop
+			; --------------------------------------------------------------
+			
+			loc_0_F91A:
+   215 F91A 78		                mov     a, b            ; CODE XREF: F906j
+   216 F91B 17		                ral
+   217 F91C 11 33 76	                lxi     d, kbd_buf
+   218 F91F 06 00	                mvi     b, 0
+   219 F921 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_puts:
+   223 F922 7E		                mov     a, m            ; CODE XREF: F818j F855p F872p F8E6p F929j F9B4p FFD6p
+   224 F923 A7		                ana     a
+   225 F924 C8		                rz
+   226 F925 CD B9 FC	                call    loc_0_FCB9
+   227 F928 23		                inx     h
+   228 F929 C3 22 F9	                jmp     entry_puts
+			; --------------------------------------------------------------
+			
+			loc_0_F92C:
+   232 F92C 21 27 76	                lxi     h, 7627h        ; CODE XREF: F892p
+   233 F92F 11 2D 76	                lxi     d, 762Dh
+   234 F932 0E 00	                mvi     c, 0
+   235 F934 CD ED F9	                call    fill_hl_de_c
+   236 F937 11 34 76	                lxi     d, 7634h
+   237 F93A CD 5A F9	                call    loc_0_F95A
+   238 F93D 22 27 76	                shld    7627h
+   239 F940 22 29 76	                shld    7629h
+   240 F943 D8		                rc
+   241 F944 3E FF	                mvi     a, 0FFh
+   242 F946 32 2D 76	                sta     762Dh
+   243 F949 CD 5A F9	                call    loc_0_F95A
+   244 F94C 22 29 76	                shld    7629h
+   245 F94F D8		                rc
+   246 F950 CD 5A F9	                call    loc_0_F95A
+   247 F953 22 2B 76	                shld    762Bh
+   248 F956 D8		                rc
+   249 F957 C3 AE FA	                jmp     loc_0_FAAE
+			; --------------------------------------------------------------
+			
+			loc_0_F95A:
+   253 F95A 21 00 00	                lxi     h, 0            ; CODE XREF: F93Ap F949p F950p FA35p FFEDp
+			
+			loc_0_F95D:
+   256 F95D 1A		                ldax    d               ; CODE XREF: F969j F98Bj
+   257 F95E 13		                inx     d
+   258 F95F FE 0D	                cpi     0Dh
+   259 F961 CA 8E F9	                jz      loc_0_F98E
+   260 F964 FE 2C	                cpi     2Ch ; ','
+   261 F966 C8		                rz
+   262 F967 FE 20	                cpi     20h ; ' '
+   263 F969 CA 5D F9	                jz      loc_0_F95D
+   264 F96C D6 30	                sui     30h ; '0'
+   265 F96E FA AE FA	                jm      loc_0_FAAE
+   266 F971 FE 0A	                cpi     0Ah
+   267 F973 FA 82 F9	                jm      loc_0_F982
+   268 F976 FE 11	                cpi     11h
+   269 F978 FA AE FA	                jm      loc_0_FAAE
+   270 F97B FE 17	                cpi     17h
+   271 F97D F2 AE FA	                jp      loc_0_FAAE
+   272 F980 D6 07	                sui     7
+			
+			loc_0_F982:
+   275 F982 4F		                mov     c, a            ; CODE XREF: F973j
+   276 F983 29		                dad     h
+   277 F984 29		                dad     h
+   278 F985 29		                dad     h
+   279 F986 29		                dad     h
+   280 F987 DA AE FA	                jc      loc_0_FAAE
+   281 F98A 09		                dad     b
+   282 F98B C3 5D F9	                jmp     loc_0_F95D
+			; --------------------------------------------------------------
+			
+			loc_0_F98E:
+   286 F98E 37		                stc                     ; CODE XREF: F961j
+   287 F98F C9		                ret
+			; --------------------------------------------------------------
+			; cmp hl, de
+			; if hl=de -> zf=1, else -> zf=0
+			; --------------------------------------------------------------
+			cmp_hl_de:
+   293 F990 7C		                mov     a, h            ; CODE XREF: F999p FA3Fp FAA6p FB1Dp FFC6p
+   294 F991 BA		                cmp     d
+   295 F992 C0		                rnz
+   296 F993 7D		                mov     a, l
+   297 F994 BB		                cmp     e
+   298 F995 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_F996:
+   302 F996 CD A4 F9	                call    loc_0_F9A4      ; CODE XREF: F9CBp F9E7p F9F9p FA1Ap
+			
+			cmp_hl_de_loop:
+   305 F999 CD 90 F9	                call    cmp_hl_de      ; CODE XREF: F9EEp FA02p FA75p FB10p FB27p FB8Ap
+			                                        ; hl=de ?
+   307 F99C C2 A2 F9	                jnz     loc_0_F9A2      ; if not, then hl=hl+1 and ret
+			
+			loc_0_F99F:                             ; hl=de, great!
+   310 F99F 33		                inx     sp              ; CODE XREF: FB20j
+   311 F9A0 33		                inx     sp              ; pop ret-addr and exit
+   312 F9A1 C9		                ret
+			
+			loc_0_F9A2:
+   315 F9A2 23		                inx     h               ; CODE XREF: F99Cj
+   316 F9A3 C9		                ret
+			; --------------------------------------------------------------
+			; Scan keyboard
+			; --------------------------------------------------------------
+			loc_0_F9A4:
+   321 F9A4 CD 72 FE	                call    entry_scan_kbd      ; CODE XREF: F996p
+   322 F9A7 FE 03	                cpi     3
+   323 F9A9 C0		                rnz
+   324 F9AA CD CE FA	                call    entry_video
+   325 F9AD C3 AE FA	                jmp     loc_0_FAAE
+			; --------------------------------------------------------------
+			
+			loc_0_F9B0:
+   329 F9B0 E5		                push    h               ; CODE XREF: FB79p
+   330 F9B1 21 6C FF	                lxi     h, m_FF6C
+   331 F9B4 CD 22 F9	                call    entry_puts
+   332 F9B7 E1		                pop     h
+   333 F9B8 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_F9B9:
+   337 F9B9 7E		                mov     a, m            ; CODE XREF: F9C8p F9DFp FA29p
+			
+			loc_0_F9BA:
+   340 F9BA C5		                push    b               ; CODE XREF: F9E3p FB81p
+   341 F9BB CD A5 FC	                call    entry_hexb
+   342 F9BE 3E 20	                mvi     a, 20h ; ' '
+   343 F9C0 CD B9 FC	                call    loc_0_FCB9
+   344 F9C3 C1		                pop     b
+   345 F9C4 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_F9C5:
+   349 F9C5 CD 78 FB	                call    loc_0_FB78      ; CODE XREF: F8A4j F9D1j
+			
+			loc_0_F9C8:
+   352 F9C8 CD B9 F9	                call    loc_0_F9B9      ; CODE XREF: F9D4j
+   353 F9CB CD 96 F9	                call    loc_0_F996
+   354 F9CE 7D		                mov     a, l
+   355 F9CF E6 0F	                ani     0Fh
+   356 F9D1 CA C5 F9	                jz      loc_0_F9C5
+   357 F9D4 C3 C8 F9	                jmp     loc_0_F9C8
+			; --------------------------------------------------------------
+			
+			loc_0_F9D7:
+   361 F9D7 0A		                ldax    b               ; CODE XREF: F8A9j F9EAj
+   362 F9D8 BE		                cmp     m
+   363 F9D9 CA E6 F9	                jz      loc_0_F9E6
+   364 F9DC CD 78 FB	                call    loc_0_FB78
+   365 F9DF CD B9 F9	                call    loc_0_F9B9
+   366 F9E2 0A		                ldax    b
+   367 F9E3 CD BA F9	                call    loc_0_F9BA
+			
+			loc_0_F9E6:
+   370 F9E6 03		                inx     b               ; CODE XREF: F9D9j
+   371 F9E7 CD 96 F9	                call    loc_0_F996
+   372 F9EA C3 D7 F9	                jmp     loc_0_F9D7
+			; --------------------------------------------------------------
+			
+			fill_hl_de_c:
+   376 F9ED 71		                mov     m, c            ; CODE XREF: F849p F8AEj F934p F9F1j
+   377 F9EE CD 99 F9	                call    cmp_hl_de_loop
+   378 F9F1 C3 ED F9	                jmp     fill_hl_de_c
+			; --------------------------------------------------------------
+			
+			loc_0_F9F4:
+   382 F9F4 79		                mov     a, c            ; CODE XREF: F8B3j F9FCj
+   383 F9F5 BE		                cmp     m
+   384 F9F6 CC 78 FB	                cz      loc_0_FB78
+   385 F9F9 CD 96 F9	                call    loc_0_F996
+   386 F9FC C3 F4 F9	                jmp     loc_0_F9F4
+			; --------------------------------------------------------------
+			
+			loc_0_F9FF:
+   390 F9FF 7E		                mov     a, m            ; CODE XREF: F8B8j FA05j
+   391 FA00 02		                stax    b
+   392 FA01 03		                inx     b
+   393 FA02 CD 99 F9	                call    cmp_hl_de_loop
+   394 FA05 C3 FF F9	                jmp     loc_0_F9FF
+			; --------------------------------------------------------------
+			
+			loc_0_FA08:
+   398 FA08 CD 78 FB	                call    loc_0_FB78      ; CODE XREF: F8D1j FA20j
+			
+			loc_0_FA0B:
+   401 FA0B 7E		                mov     a, m            ; CODE XREF: FA23j
+   402 FA0C B7		                ora     a
+   403 FA0D FA 15 FA	                jm      loc_0_FA15
+   404 FA10 FE 20	                cpi     20h ; ' '
+   405 FA12 D2 17 FA	                jnc     loc_0_FA17
+			
+			loc_0_FA15:
+   408 FA15 3E 2E	                mvi     a, 2Eh ; '.'    ; CODE XREF: FA0Dj
+			
+			loc_0_FA17:
+   411 FA17 CD B9 FC	                call    loc_0_FCB9      ; CODE XREF: FA12j
+   412 FA1A CD 96 F9	                call    loc_0_F996
+   413 FA1D 7D		                mov     a, l
+   414 FA1E E6 0F	                ani     0Fh
+   415 FA20 CA 08 FA	                jz      loc_0_FA08
+   416 FA23 C3 0B FA	                jmp     loc_0_FA0B
+			; --------------------------------------------------------------
+			
+			loc_0_FA26:
+   420 FA26 CD 78 FB	                call    loc_0_FB78      ; CODE XREF: F8BDj FA3Cj
+   421 FA29 CD B9 F9	                call    loc_0_F9B9
+   422 FA2C E5		                push    h
+   423 FA2D CD EE F8	                call    loc_0_F8EE
+   424 FA30 E1		                pop     h
+   425 FA31 D2 3B FA	                jnc     loc_0_FA3B
+   426 FA34 E5		                push    h
+   427 FA35 CD 5A F9	                call    loc_0_F95A
+   428 FA38 7D		                mov     a, l
+   429 FA39 E1		                pop     h
+   430 FA3A 77		                mov     m, a
+			
+			loc_0_FA3B:
+   433 FA3B 23		                inx     h               ; CODE XREF: FA31j
+   434 FA3C C3 26 FA	                jmp     loc_0_FA26
+			; --------------------------------------------------------------
+			
+			loc_0_FA3F:
+   438 FA3F CD 90 F9	                call    cmp_hl_de      ; CODE XREF: F8C2j
+   439 FA42 CA 5A FA	                jz      loc_0_FA5A
+   440 FA45 EB		                xchg
+   441 FA46 22 23 76	                shld    7623h
+   442 FA49 7E		                mov     a, m
+   443 FA4A 32 25 76	                sta     7625h
+   444 FA4D 36 F7	                mvi     m, 0F7h ; '÷'
+   445 FA4F 3E C3	                mvi     a, 0C3h ; 'Ã'
+   446 FA51 32 30 00	                sta     30h
+   447 FA54 21 A2 FF	                lxi     h, loc_0_FFA2
+   448 FA57 22 31 00	                shld    31h
+			
+			loc_0_FA5A:
+   451 FA5A 31 18 76	                lxi     sp, 7618h       ; CODE XREF: FA42j
+   452 FA5D C1		                pop     b
+   453 FA5E D1		                pop     d
+   454 FA5F E1		                pop     h
+   455 FA60 F1		                pop     psw
+   456 FA61 F9		                sphl
+   457 FA62 2A 16 76	                lhld    7616h
+   458 FA65 C3 26 76	                jmp     7626h
+			; --------------------------------------------------------------
+			
+			loc_0_FA68:
+   462 FA68 3E 90	                mvi     a, 90h          ; CODE XREF: F8D6j
+   463 FA6A 32 03 A0	                sta     0A003h
+			
+			loc_0_FA6D:
+   466 FA6D 22 01 A0	                shld    0A001h          ; CODE XREF: FA78p
+   467 FA70 3A 00 A0	                lda     0A000h
+   468 FA73 02		                stax    b
+   469 FA74 03		                inx     b
+   470 FA75 CD 99 F9	                call    cmp_hl_de_loop
+   471 FA78 C3 6D FA	                jmp     loc_0_FA6D
+			
+			entry_getxy:
+   474 FA7B 2A 02 76	                lhld    cursor_xy           ; CODE XREF: F81Ej
+   475 FA7E C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_curc:
+   479 FA7F E5		                push    h               ; CODE XREF: F821j
+   480 FA80 2A 00 76	                lhld    cursor_addr
+   481 FA83 7E		                mov     a, m
+   482 FA84 E1		                pop     h
+   483 FA85 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FA86:
+   487 FA86 3A 2D 76	                lda     762Dh           ; CODE XREF: F8C7j
+   488 FA89 B7		                ora     a
+   489 FA8A CA 91 FA	                jz      loc_0_FA91
+   490 FA8D 7B		                mov     a, e
+   491 FA8E 32 2F 76	                sta     762Fh
+			
+			loc_0_FA91:
+   494 FA91 CD B6 FA	                call    entry_inpblock      ; CODE XREF: FA8Aj
+   495 FA94 CD 78 FB	                call    loc_0_FB78
+   496 FA97 EB		                xchg
+   497 FA98 CD 78 FB	                call    loc_0_FB78
+   498 FA9B EB		                xchg
+   499 FA9C C5		                push    b
+   500 FA9D CD 16 FB	                call    entry_chksum
+   501 FAA0 60		                mov     h, b
+   502 FAA1 69		                mov     l, c
+   503 FAA2 CD 78 FB	                call    loc_0_FB78
+   504 FAA5 D1		                pop     d
+   505 FAA6 CD 90 F9	                call    cmp_hl_de
+   506 FAA9 C8		                rz
+   507 FAAA EB		                xchg
+   508 FAAB CD 78 FB	                call    loc_0_FB78
+			
+			loc_0_FAAE:
+   511 FAAE 3E 3F	                mvi     a, 3Fh ; '?'    ; CODE XREF: F913j F957j F96Ej F978j F97Dj F987j F9ADj FC3Dj
+   512 FAB0 CD B9 FC	                call    loc_0_FCB9
+   513 FAB3 C3 6C F8	                jmp     prompt_loop
+			
+			; --------------------------------------------------------------
+			; Input from tape : In : HL - offset
+			;                   Out: HL - start, DE - end, BC - chksum
+			; --------------------------------------------------------------
+			entry_inpblock:                         ; CODE XREF: F824j FA91p
+   520 FAB6 3E FF	                mvi     a, 0FFh
+   521 FAB8 CD FF FA	                call    loc_0_FAFF      ; input word to BC with
+			                                        ; sinc-byte before 1-st byte
+			                                        ; it's addr from tape
+   524 FABB E5		                push    h
+   525 FABC 09		                dad     b               ; calc start addr:
+			                                        ; HL=tape addr + offset
+   527 FABD EB		                xchg                    ; DE=start addr
+   528 FABE CD FD FA	                call    loc_0_FAFD      ; input word to BC w/o sinc-byte
+			                                        ; it's end from tape
+   530 FAC1 E1		                pop     h               ; hl=offset
+   531 FAC2 09		                dad     b               ; calc end addr:
+			                                        ; HL=tape addr + offset
+   533 FAC3 EB		                xchg                    ; hl=start addr, de=and addr
+   534 FAC4 E5		                push    h
+   535 FAC5 CD 0A FB	                call    loc_0_FB0A      ; input block from hl -> de
+   536 FAC8 3E FF	                mvi     a, 0FFh         ; input word to bc
+   537 FACA CD FF FA	                call    loc_0_FAFF      ; with sinc-byte
+			                                        ; it's a chksum from tape
+   539 FACD E1		                pop     h               ; hl=addr
+			
+			entry_video:                            ; -- start video
+   542 FACE E5		                push    h               ; CODE XREF: F82Dj F83Ep F858p F9AAp FB75j FC38p
+   543 FACF 21 01 C0	                lxi     h, 0C001h
+   544 FAD2 36 00	                mvi     m, 0
+   545 FAD4 2B		                dcx     h
+   546 FAD5 36 4D	                mvi     m, 4Dh
+   547 FAD7 36 1D	                mvi     m, 1Dh
+   548 FAD9 36 99	                mvi     m, 99h
+   549 FADB 36 93	                mvi     m, 93h
+   550 FADD 23		                inx     h
+   551 FADE 36 27	                mvi     m, 27h
+   552 FAE0 7E		                mov     a, m
+			
+			loc_0_FAE1:
+   555 FAE1 7E		                mov     a, m            ; CODE XREF: FAE4j
+   556 FAE2 E6 20	                ani     20h
+   557 FAE4 CA E1 FA	                jz      loc_0_FAE1      ; wait for start video
+   558 FAE7 21 08 E0	                lxi     h, 0e008h
+   559 FAEA 36 80	                mvi     m, 80h
+   560 FAEC 2E 04	                mvi     l, 4
+   561 FAEE 36 D0	                mvi     m, 0D0h
+   562 FAF0 36 76	                mvi     m, 76h
+   563 FAF2 2C		                inr     l
+   564 FAF3 36 23	                mvi     m, 23h
+   565 FAF5 36 49	                mvi     m, 49h
+   566 FAF7 2E 08	                mvi     l, 8
+   567 FAF9 36 A4	                mvi     m, 0A4h
+   568 FAFB E1		                pop     h
+   569 FAFC C9		                ret
+			
+			; --------------------------------------------------------------
+			; Input word to BC
+			
+			loc_0_FAFD:                             ; -- w/o sinc-byte
+			
+   576 FAFD 3E 08	                mvi     a, 8            ; CODE XREF: FABEp
+			
+			loc_0_FAFF:
+			
+   580 FAFF CD 98 FB	                call    entry_inpb      ; CODE XREF: FAB8p FACAp
+   581 FB02 47		                mov     b, a
+   582 FB03 3E 08	                mvi     a, 8
+			
+			loc_0_FB05:
+   585 FB05 CD 98 FB	                call    entry_inpb      ; CODE XREF: FB8Dj
+   586 FB08 4F		                mov     c, a
+   587 FB09 C9		                ret
+			
+			; --------------------------------------------------------------
+			; Input block while de!=hl
+			loc_0_FB0A:                             ; CODE XREF: FAC5p FB13j
+   592 FB0A 3E 08	                mvi     a, 8
+   593 FB0C CD 98 FB	                call    entry_inpb      ; input byte to a w/o sinc-byte
+   594 FB0F 77		                mov     m, a            ; to mem it
+   595 FB10 CD 99 F9	                call    cmp_hl_de_loop      ; check hl=de and
+			                                        ; if hl!=de -> hl=hl+1
+			                                        ; else -> ret to FAC0
+   598 FB13 C3 0A FB	                jmp     loc_0_FB0A      ; while hl!=de
+			; --------------------------------------------------------------
+			; Calc chksum
+			; --------------------------------------------------------------
+			entry_chksum:
+   603 FB16 01 00 00	                lxi     b, 0            ; CODE XREF: F82Aj FA9Dp FB36p
+			
+			loc_0_FB19:
+   606 FB19 7E		                mov     a, m            ; get byte
+   607 FB1A 81		                add     c               ; lo part
+   608 FB1B 4F		                mov     c, a            ; store
+   609 FB1C F5		                push    psw             ; save cf
+   610 FB1D CD 90 F9	                call    cmp_hl_de      ; hl=de
+   611 FB20 CA 9F F9	                jz      loc_0_F99F      ; yes, remove psw and exit
+   612 FB23 F1		                pop     psw             ; restore cf
+   613 FB24 78		                mov     a, b            ; hi part
+   614 FB25 8E		                adc     m
+   615 FB26 47		                mov     b, a            ; store
+   616 FB27 CD 99 F9	                call    cmp_hl_de_loop      ; while hl!=de -> hl++
+			                                        ; otherwise -> exit over stack
+   618 FB2A C3 19 FB	                jmp     loc_0_FB19      ; repeat until de!=hl
+			; --------------------------------------------------------------
+			; monitor 'O' command
+			;
+			loc_0_FB2D:
+   623 FB2D 79		                mov     a, c            ; CODE XREF: F8CCj
+   624 FB2E B7		                ora     a
+   625 FB2F CA 35 FB	                jz      loc_0_FB35
+   626 FB32 32 30 76	                sta     7630h
+			
+			loc_0_FB35:
+   629 FB35 E5		                push    h               ; CODE XREF: FB2Fj
+   630 FB36 CD 16 FB	                call    entry_chksum
+   631 FB39 E1		                pop     h
+   632 FB3A CD 78 FB	                call    loc_0_FB78
+   633 FB3D EB		                xchg
+   634 FB3E CD 78 FB	                call    loc_0_FB78
+   635 FB41 EB		                xchg
+   636 FB42 E5		                push    h
+   637 FB43 60		                mov     h, b
+   638 FB44 69		                mov     l, c
+   639 FB45 CD 78 FB	                call    loc_0_FB78
+   640 FB48 E1		                pop     h
+			
+			                                        ; -- out block
+			entry_outblock:                         ; CODE XREF: F827j
+   644 FB49 C5		                push    b               ; save chksum
+   645 FB4A 01 00 00	                lxi     b, 0
+			
+			loc_0_FB4D:                             ; make 256 zeros
+   648 FB4D CD 46 FC	                call    entry_outb      ; out 0 byte
+   649 FB50 05		                dcr     b
+   650 FB51 E3		                xthl                    ; delay 18t
+   651 FB52 E3		                xthl                    ; delay 18t
+   652 FB53 C2 4D FB	                jnz     loc_0_FB4D
+   653 FB56 0E E6	                mvi     c, 0E6h
+   654 FB58 CD 46 FC	                call    entry_outb      ; out sinc-byte
+   655 FB5B CD 90 FB	                call    loc_0_FB90      ; out hl -- start addr
+   656 FB5E EB		                xchg
+   657 FB5F CD 90 FB	                call    loc_0_FB90      ; out de -- end addr
+   658 FB62 EB		                xchg
+   659 FB63 CD 86 FB	                call    loc_0_FB86      ; out block
+   660 FB66 21 00 00	                lxi     h, 0
+   661 FB69 CD 90 FB	                call    loc_0_FB90      ; out 0000
+   662 FB6C 0E E6	                mvi     c, 0E6h ;
+   663 FB6E CD 46 FC	                call    entry_outb      ; out sync-byte
+   664 FB71 E1		                pop     h               ; restore chksum
+   665 FB72 CD 90 FB	                call    loc_0_FB90      ; out chksum
+   666 FB75 C3 CE FA	                jmp     entry_video     ; start video and exit
+			; --------------------------------------------------------------
+			
+			loc_0_FB78:
+   670 FB78 C5		                push    b               ; CODE XREF: F9C5p F9DCp F9F6p FA08p FA26p FA94p FA98p FAA2p FAABp FB3Ap FB3Ep FB45p
+			                                        ; FFBFp FFE4p
+   672 FB79 CD B0 F9	                call    loc_0_F9B0
+   673 FB7C 7C		                mov     a, h
+   674 FB7D CD A5 FC	                call    entry_hexb      ; out a in hex
+   675 FB80 7D		                mov     a, l
+   676 FB81 CD BA F9	                call    loc_0_F9BA
+   677 FB84 C1		                pop     b
+   678 FB85 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FB86:
+   682 FB86 4E		                mov     c, m            ; get current byte
+   683 FB87 CD 46 FC	                call    entry_outb
+   684 FB8A CD 99 F9	                call    cmp_hl_de_loop  ; check hl=de and
+			                                        ; if hl!=de -> hl=hl+1
+			                                        ; else -> ret to FB66
+   687 FB8D C3 86 FB	                jmp     loc_0_FB86      ; out while hl!=de
+			; --------------------------------------------------------------
+			; Out hl to tape
+			loc_0_FB90:                             ; CODE XREF: FB5Bp FB5Fp FB69p FB72p
+   691 FB90 4C		                mov     c, h
+   692 FB91 CD 46 FC	                call    entry_outb      ; out h
+   693 FB94 4D		                mov     c, l
+   694 FB95 C3 46 FC	                jmp     entry_outb      ; out l and exit
+			; --------------------------------------------------------------
+			; Input byte
+			entry_inpb:
+   698 FB98 E5		                push    h               ; CODE XREF: FAFFp FB05p FB0Cp
+   699 FB99 C5		                push    b
+   700 FB9A D5		                push    d
+   701 FB9B 57		                mov     d, a            ; d = count, 'ff' for sinc-byte
+			
+			loc_0_FB9C:
+			
+   705 FB9C 3E 80	                mvi     a, 80h ; '€'    ; CODE XREF: FC43j
+   706 FB9E 32 08 E0	                sta     0E008h          ; DMA ?!
+			
+   708 FBA1 21 00 00	                lxi     h, 0
+   709 FBA4 39		                dad     sp              ; hl=sp
+   710 FBA5 31 00 00	                lxi     sp, 0           ; sp=0
+   711 FBA8 22 0D 76	                shld    760Dh           ; save sp
+			
+   713 FBAB 0E 00	                mvi     c, 0
+   714 FBAD 3A 02 80	                lda     8002h
+   715 FBB0 0F		                rrc
+   716 FBB1 0F		                rrc
+   717 FBB2 0F		                rrc
+   718 FBB3 0F		                rrc                     ; d0 -- get first state
+   719 FBB4 E6 01	                ani     1               ; mask other bits
+   720 FBB6 5F		                mov     e, a            ; e=d0
+			
+			loc_0_FBB7:
+   723 FBB7 F1		                pop     psw             ; delay 11t
+   724 FBB8 79		                mov     a, c            ; a = c (current byte)
+   725 FBB9 E6 7F	                ani     7Fh             ; d7=0
+   726 FBBB 07		                rlc                     ; clear d0 in c for next bit
+   727 FBBC 4F		                mov     c, a            ; c = a
+   728 FBBD 26 00	                mvi     h, 0
+			
+			loc_0_FBBF:
+   731 FBBF 25		                dcr     h
+   732 FBC0 CA 34 FC	                jz      loc_0_FC34      ; -- wait for change bit
+   733 FBC3 F1		                pop     psw             ; delay 11t
+   734 FBC4 3A 02 80	                lda     8002h
+   735 FBC7 0F		                rrc
+   736 FBC8 0F		                rrc
+   737 FBC9 0F		                rrc
+   738 FBCA 0F		                rrc                     ; d0 bit from tape
+   739 FBCB E6 01	                ani     1               ; mask another bits
+   740 FBCD BB		                cmp     e               ; d5 = prev d5 ?
+   741 FBCE CA BF FB	                jz      loc_0_FBBF      ; wait while '='
+   742 FBD1 B1		                ora     c               ;
+   743 FBD2 4F		                mov     c, a            ; c0=bit, current bit
+   744 FBD3 15		                dcr     d               ; count--
+   745 FBD4 3A 2F 76	                lda     762Fh           ; a=input delay (2ah=42)
+   746 FBD7 C2 DC FB	                jnz     loc_0_FBDC      ; if it's last bit ->
+   747 FBDA D6 12	                sui     12h             ; dec delay
+			
+			loc_0_FBDC:
+   750 FBDC 47		                mov     b, a            ; b=input delay ( 5 )  -+ 1097
+			                                        ;                       |
+			loc_0_FBDD:                             ;                       |
+   753 FBDD F1		                pop     psw             ; 11 +                  |
+   754 FBDE 05		                dcr     b               ; 5  | 26*42=1092      -+
+   755 FBDF C2 DD FB	                jnz     loc_0_FBDD      ; 10 +
+   756 FBE2 14		                inr     d               ; count++, restore
+   757 FBE3 3A 02 80	                lda     8002h
+   758 FBE6 0F		                rrc
+   759 FBE7 0F		                rrc
+   760 FBE8 0F		                rrc
+   761 FBE9 0F		                rrc                     ; d0=bit
+   762 FBEA E6 01	                ani     1               ; mask other bits
+   763 FBEC 5F		                mov     e, a            ; e=d0
+   764 FBED 7A		                mov     a, d            ; count=ff ?
+   765 FBEE B7		                ora     a               ; we waits for sinc-byte ?
+   766 FBEF F2 0B FC	                jp      loc_0_FC0B      ; if not -> goto to count--
+   767 FBF2 79		                mov     a, c            ; a=current byte state
+   768 FBF3 FE E6	                cpi     0E6h ;          ; a=sinc-byte ?
+   769 FBF5 C2 FF FB	                jnz     loc_0_FBFF      ; if not -> goto
+   770 FBF8 AF		                xra     a
+   771 FBF9 32 2E 76	                sta     762Eh           ; [362E]=0
+   772 FBFC C3 09 FC	                jmp     loc_0_FC09
+			; --------------------------------------------------------------
+			
+			loc_0_FBFF:
+   776 FBFF FE 19	                cpi     19h             ; a=!sinc-byte ?
+   777 FC01 C2 B7 FB	                jnz     loc_0_FBB7      ; if not -> goto
+   778 FC04 3E FF	                mvi     a, 0FFh
+   779 FC06 32 2E 76	                sta     762Eh           ; [362e]=FF
+			
+			loc_0_FC09:                             ; sinc-byte or !sinc-byte inputed
+   782 FC09 16 09	                mvi     d, 9            ; start to input info byte
+			
+			loc_0_FC0B:
+   785 FC0B 15		                dcr     d               ; get another 9 sinc-bytes
+   786 FC0C C2 B7 FB	                jnz     loc_0_FBB7
+			
+   788 FC0F 21 04 E0	                lxi     h, 0E004h         ; -+ DMA and VG ?!
+   789 FC12 36 D0	                mvi     m, 0D0h           ;  |
+   790 FC14 36 76	                mvi     m, 76h            ;  |
+   791 FC16 23		                inx     h                 ;  |
+   792 FC17 36 23	                mvi     m, 23h            ;  |
+   793 FC19 36 49	                mvi     m, 49h            ;  |
+   794 FC1B 3E 27	                mvi     a, 27h            ;  |
+   795 FC1D 32 01 C0	                sta     0C001h            ;  |
+   796 FC20 3E E0	                mvi     a, 0E0h           ;  |
+   797 FC22 32 01 C0	                sta     0C001h            ;  |
+   798 FC25 2E 08	                mvi     l, 8              ;  |
+   799 FC27 36 A4	                mvi     m, 0A4h           ;  |
+   800 FC29 2A 0D 76	                lhld    760Dh             ;  |
+   801 FC2C F9		                sphl                      ; -+
+			
+   803 FC2D 3A 2E 76	                lda     762Eh              ;
+   804 FC30 A9		                xra     c
+   805 FC31 C3 A1 FC	                jmp     loc_0_FCA1         ; exit
+			; --------------------------------------------------------------
+			
+			loc_0_FC34:                             ; time-out!
+   809 FC34 2A 0D 76	                lhld    760Dh
+   810 FC37 F9		                sphl                    ; restore stack
+   811 FC38 CD CE FA	                call    entry_video     ; start video
+   812 FC3B 7A		                mov     a, d
+   813 FC3C B7		                ora     a               ; timeout in info-byte ?
+   814 FC3D F2 AE FA	                jp      loc_0_FAAE      ; yes -> warm restart monitor
+   815 FC40 CD A4 F9	                call    loc_0_F9A4      ; test for keypressing
+   816 FC43 C3 9C FB	                jmp     loc_0_FB9C      ; repeat input for sinc-byte
+			                                        ; again
+			; --------------------------------------------------------------
+			; Out byte from c
+			;
+			entry_outb:
+   822 FC46 E5		                push    h               ; CODE XREF: F80Cj FB4Dp FB58p FB6Ep FB87p FB91p FB95j
+   823 FC47 C5		                push    b
+   824 FC48 D5		                push    d
+   825 FC49 F5		                push    psw
+   826 FC4A 3E 80	                mvi     a, 80h ; '€'
+   827 FC4C 32 08 E0	                sta     0E008h
+   828 FC4F 21 00 00	                lxi     h, 0
+   829 FC52 39		                dad     sp
+   830 FC53 31 00 00	                lxi     sp, 0
+   831 FC56 16 08	                mvi     d, 8
+			
+			loc_0_FC58:
+   834 FC58 F1		                pop     psw             ; CODE XREF: FC82j
+   835 FC59 79		                mov     a, c
+   836 FC5A 07		                rlc
+   837 FC5B 4F		                mov     c, a
+   838 FC5C 3E 01	                mvi     a, 1
+   839 FC5E A9		                xra     c
+   840 FC5F 32 02 80	                sta     8002h
+   841 FC62 3A 30 76	                lda     7630h
+   842 FC65 47		                mov     b, a
+			
+			loc_0_FC66:
+   845 FC66 F1		                pop     psw             ; CODE XREF: FC68j
+   846 FC67 05		                dcr     b
+   847 FC68 C2 66 FC	                jnz     loc_0_FC66
+   848 FC6B 3E 00	                mvi     a, 0
+   849 FC6D A9		                xra     c
+   850 FC6E 32 02 80	                sta     8002h
+   851 FC71 15		                dcr     d
+   852 FC72 3A 30 76	                lda     7630h
+   853 FC75 C2 7A FC	                jnz     loc_0_FC7A
+   854 FC78 D6 0E	                sui     0Eh
+			
+			loc_0_FC7A:
+   857 FC7A 47		                mov     b, a
+			
+			loc_0_FC7B:
+   860 FC7B F1		                pop     psw
+   861 FC7C 05		                dcr     b
+   862 FC7D C2 7B FC	                jnz     loc_0_FC7B
+   863 FC80 14		                inr     d
+   864 FC81 15		                dcr     d
+   865 FC82 C2 58 FC	                jnz     loc_0_FC58
+   866 FC85 F9		                sphl
+   867 FC86 21 04 E0	                lxi     h, 0E004h
+   868 FC89 36 D0	                mvi     m, 0D0h
+   869 FC8B 36 76	                mvi     m, 76h
+   870 FC8D 23		                inx     h
+   871 FC8E 36 23	                mvi     m, 23h
+   872 FC90 36 49	                mvi     m, 49h
+   873 FC92 3E 27	                mvi     a, 27h
+   874 FC94 32 01 C0	                sta     0C001h
+   875 FC97 3E E0	                mvi     a, 0E0h
+   876 FC99 32 01 C0	                sta     0C001h
+   877 FC9C 2E 08	                mvi     l, 8
+   878 FC9E 36 A4	                mvi     m, 0A4h
+   879 FCA0 F1		                pop     psw
+			
+			loc_0_FCA1:
+   882 FCA1 D1		                pop     d               ; CODE XREF: FC31j
+   883 FCA2 C1		                pop     b
+   884 FCA3 E1		                pop     h
+   885 FCA4 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_hexb:
+   889 FCA5 F5		                push    psw             ; CODE XREF: F815j F9BBp FB7Dp
+   890 FCA6 0F		                rrc
+   891 FCA7 0F		                rrc
+   892 FCA8 0F		                rrc
+   893 FCA9 0F		                rrc
+   894 FCAA CD AE FC	                call    hexb_tetr
+   895 FCAD F1		                pop     psw
+			
+			hexb_tetr:
+   898 FCAE E6 0F	                ani     0Fh             ; CODE XREF: FCAAp
+   899 FCB0 FE 0A	                cpi     0Ah
+   900 FCB2 FA B7 FC	                jm      hexb_make_sym
+   901 FCB5 C6 07	                adi     7
+			
+			hexb_make_sym:
+   904 FCB7 C6 30	                adi     30h ; '0'       ; CODE XREF: FCB2j
+			
+			loc_0_FCB9:
+   907 FCB9 4F		                mov     c, a            ; CODE XREF: F900p F925p F9C0p FA17p FAB0p
+			
+			entry_putc:
+   910 FCBA F5		                push    psw             ; CODE XREF: F809j F80Fj
+   911 FCBB C5		                push    b
+   912 FCBC D5		                push    d
+   913 FCBD E5		                push    h
+   914 FCBE CD 01 FE	                call    entry_kbhit      ; kbhit ?
+   915 FCC1 21 85 FD	                lxi     h, loc_0_FD85
+   916 FCC4 E5		                push    h
+   917 FCC5 2A 02 76	                lhld    cursor_xy
+   918 FCC8 EB		                xchg                    ; de=cursor pos
+   919 FCC9 2A 00 76	                lhld    cursor_addr           ; hl=cursor addr
+   920 FCCC 3A 04 76	                lda     cursor_seq
+   921 FCCF 3D		                dcr     a
+   922 FCD0 FA EE FC	                jm      loc_0_FCEE
+   923 FCD3 CA 65 FD	                jz      loc_0_FD65
+   924 FCD6 E2 73 FD	                jpo     loc_0_FD73
+   925 FCD9 79		                mov     a, c
+   926 FCDA D6 20	                sui     20h ; ' '
+   927 FCDC 4F		                mov     c, a
+			
+			loc_0_FCDD:
+   930 FCDD 0D		                dcr     c               ; CODE XREF: FCE6j
+   931 FCDE FA E9 FC	                jm      loc_0_FCE9      ;
+   932 FCE1 C5		                push    b
+   933 FCE2 CD B9 FD	                call    loc_0_FDB9
+   934 FCE5 C1		                pop     b
+   935 FCE6 C3 DD FC	                jmp     loc_0_FCDD
+			; --------------------------------------------------------------
+			
+			loc_0_FCE9:
+   939 FCE9 AF		                xra     a               ; CODE XREF: FCDEj FD68j
+			
+			loc_0_FCEA:
+   942 FCEA 32 04 76	                sta     cursor_seq           ; CODE XREF: FD70j FD7Aj FDA0j
+   943 FCED C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FCEE:
+   947 FCEE 79		                mov     a, c
+   948 FCEF E6 7F	                ani     7Fh
+   949 FCF1 4F		                mov     c, a
+   950 FCF2 FE 1F	                cpi     1Fh
+   951 FCF4 CA A3 FD	                jz      loc_0_FDA3
+   952 FCF7 FE 0C	                cpi     0Ch
+   953 FCF9 CA B2 FD	                jz      loc_0_FDB2
+   954 FCFC FE 0D	                cpi     0Dh
+			
+			locret_0_FCFE:
+   957 FCFE CA F3 FD	                jz      loc_0_FDF3      ; CODE XREF: FCD0j
+   958 FD01 FE 0A	                cpi     0Ah
+			
+			locret_0_FD03:
+   961 FD03 CA 47 FD	                jz      loc_0_FD47      ; CODE XREF: FD7Ep
+   962 FD06 FE 08	                cpi     8
+   963 FD08 CA D6 FD	                jz      loc_0_FDD6
+   964 FD0B FE 18	                cpi     18h
+   965 FD0D CA B9 FD	                jz      loc_0_FDB9
+   966 FD10 FE 19	                cpi     19h
+   967 FD12 CA E2 FD	                jz      loc_0_FDE2
+   968 FD15 FE 1A	                cpi     1Ah
+   969 FD17 CA C5 FD	                jz      loc_0_FDC5
+   970 FD1A FE 1B	                cpi     1Bh
+   971 FD1C CA 9E FD	                jz      loc_0_FD9E
+   972 FD1F FE 07	                cpi     7
+   973 FD21 C2 38 FD	                jnz     loc_0_FD38
+   974 FD24 01 F0 05	                lxi     b, 5F0h
+			
+			loc_0_FD27:
+   977 FD27 78		                mov     a, b            ; CODE XREF: FD34j FE3Ap
+			
+			loc_0_FD28:
+   980 FD28 FB		                ei                      ; CODE XREF: FD2Aj
+   981 FD29 3D		                dcr     a
+   982 FD2A C2 28 FD	                jnz     loc_0_FD28
+   983 FD2D 78		                mov     a, b
+			
+			loc_0_FD2E:
+   986 FD2E F3		                di                      ; CODE XREF: FD30j
+   987 FD2F 3D		                dcr     a
+   988 FD30 C2 2E FD	                jnz     loc_0_FD2E
+   989 FD33 0D		                dcr     c
+   990 FD34 C2 27 FD	                jnz     loc_0_FD27
+   991 FD37 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FD38:
+   995 FD38 71		                mov     m, c            ; CODE XREF: FD21j
+   996 FD39 CD B9 FD	                call    loc_0_FDB9
+   997 FD3C 7A		                mov     a, d
+   998 FD3D FE 03	                cpi     3
+   999 FD3F C0		                rnz
+  1000 FD40 7B		                mov     a, e
+  1001 FD41 FE 08	                cpi     8
+  1002 FD43 C0		                rnz
+  1003 FD44 CD E2 FD	                call    loc_0_FDE2
+			
+			loc_0_FD47:
+  1006 FD47 7A		                mov     a, d            ; CODE XREF: FD03j
+  1007 FD48 FE 1B	                cpi     1Bh
+  1008 FD4A C2 C5 FD	                jnz     loc_0_FDC5
+  1009 FD4D E5		                push    h
+  1010 FD4E D5		                push    d
+  1011 FD4F 21 C2 77	                lxi     h, 77C2h
+  1012 FD52 11 10 78	                lxi     d, 7810h
+  1013 FD55 01 9E 07	                lxi     b, 79Eh
+			
+			loc_0_FD58:
+  1016 FD58 1A		                ldax    d               ; CODE XREF: FD5Fj
+  1017 FD59 77		                mov     m, a
+  1018 FD5A 23		                inx     h
+  1019 FD5B 13		                inx     d
+  1020 FD5C 0B		                dcx     b
+  1021 FD5D 79		                mov     a, c
+  1022 FD5E B0		                ora     b
+  1023 FD5F C2 58 FD	                jnz     loc_0_FD58
+  1024 FD62 D1		                pop     d
+  1025 FD63 E1		                pop     h
+  1026 FD64 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FD65:
+  1030 FD65 79		                mov     a, c            ; CODE XREF: FCD3j
+  1031 FD66 FE 59	                cpi     59h ; 'Y'
+  1032 FD68 C2 E9 FC	                jnz     loc_0_FCE9
+  1033 FD6B CD B2 FD	                call    loc_0_FDB2
+  1034 FD6E 3E 02	                mvi     a, 2
+  1035 FD70 C3 EA FC	                jmp     loc_0_FCEA
+			; --------------------------------------------------------------
+			
+			loc_0_FD73:
+  1039 FD73 79		                mov     a, c            ; CODE XREF: FCD6j
+  1040 FD74 D6 20	                sui     20h ; ' '
+  1041 FD76 4F		                mov     c, a
+			
+			loc_0_FD77:
+  1044 FD77 0D		                dcr     c               ; CODE XREF: FD82j
+  1045 FD78 3E 04	                mvi     a, 4
+  1046 FD7A FA EA FC	                jm      loc_0_FCEA
+  1047 FD7D C5		                push    b
+  1048 FD7E CD C5 FD	                call    loc_0_FDC5
+  1049 FD81 C1		                pop     b
+  1050 FD82 C3 77 FD	                jmp     loc_0_FD77
+			; --------------------------------------------------------------
+			
+			loc_0_FD85:
+  1054 FD85 22 00 76	                shld    cursor_addr
+  1055 FD88 EB		                xchg
+  1056 FD89 22 02 76	                shld    cursor_xy
+  1057 FD8C 3E 80	                mvi     a, 80h ; '€'
+  1058 FD8E 32 01 C0	                sta     0C001h
+  1059 FD91 7D		                mov     a, l
+  1060 FD92 32 00 C0	                sta     0C000h
+  1061 FD95 7C		                mov     a, h
+			
+			loc_0_FD96:
+  1064 FD96 32 00 C0	                sta     0C000h          ; CODE XREF: F806j
+  1065 FD99 E1		                pop     h
+  1066 FD9A D1		                pop     d
+  1067 FD9B C1		                pop     b
+  1068 FD9C F1		                pop     psw
+  1069 FD9D C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FD9E:
+  1073 FD9E 3E 01	                mvi     a, 1            ; CODE XREF: FD1Cj
+  1074 FDA0 C3 EA FC	                jmp     loc_0_FCEA
+			; --------------------------------------------------------------
+			
+			loc_0_FDA3:
+  1078 FDA3 21 F4 7F	                lxi     h, 7FF4h        ; CODE XREF: FCF4j
+  1079 FDA6 11 25 09	                lxi     d, 925h
+			
+			loc_0_FDA9:
+  1082 FDA9 AF		                xra     a               ; CODE XREF: FDAFj
+  1083 FDAA 77		                mov     m, a
+  1084 FDAB 2B		                dcx     h
+  1085 FDAC 1B		                dcx     d
+  1086 FDAD 7B		                mov     a, e
+  1087 FDAE B2		                ora     d
+  1088 FDAF C2 A9 FD	                jnz     loc_0_FDA9
+			
+			loc_0_FDB2:
+  1091 FDB2 11 08 03	                lxi     d, 308h         ; CODE XREF: FCF9j FD6Bp
+  1092 FDB5 21 C2 77	                lxi     h, 77C2h
+  1093 FDB8 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FDB9:
+  1097 FDB9 7B		                mov     a, e            ; CODE XREF: FCE2p FD0Dj FD39p
+  1098 FDBA 23		                inx     h
+  1099 FDBB 1C		                inr     e
+  1100 FDBC FE 47	                cpi     47h ; 'G'
+  1101 FDBE C0		                rnz
+  1102 FDBF 1E 08	                mvi     e, 8
+  1103 FDC1 01 C0 FF	                lxi     b, 0FFC0h
+  1104 FDC4 09		                dad     b
+			
+			loc_0_FDC5:
+  1107 FDC5 7A		                mov     a, d            ; CODE XREF: FD17j FD4Aj
+  1108 FDC6 FE 1B	                cpi     1Bh
+  1109 FDC8 01 4E 00	                lxi     b, 4Eh ; 'N'
+  1110 FDCB C2 D3 FD	                jnz     loc_0_FDD3
+  1111 FDCE 16 02	                mvi     d, 2
+  1112 FDD0 01 B0 F8	                lxi     b, 0F8B0h
+			
+			loc_0_FDD3:
+  1115 FDD3 14		                inr     d               ; CODE XREF: FDCBj
+  1116 FDD4 09		                dad     b
+  1117 FDD5 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FDD6:
+  1121 FDD6 7B		                mov     a, e            ; CODE XREF: FD08j
+  1122 FDD7 2B		                dcx     h
+  1123 FDD8 1D		                dcr     e
+  1124 FDD9 FE 08	                cpi     8
+  1125 FDDB C0		                rnz
+  1126 FDDC 1E 47	                mvi     e, 47h ; 'G'
+  1127 FDDE 01 40 00	                lxi     b, 40h ; '@'
+  1128 FDE1 09		                dad     b
+			
+			loc_0_FDE2:
+  1131 FDE2 7A		                mov     a, d            ; CODE XREF: FD12j FD44p
+  1132 FDE3 FE 03	                cpi     3
+  1133 FDE5 01 B2 FF	                lxi     b, 0FFB2h
+  1134 FDE8 C2 F0 FD	                jnz     loc_0_FDF0
+  1135 FDEB 16 1C	                mvi     d, 1Ch
+  1136 FDED 01 50 07	                lxi     b, 750h
+			
+			loc_0_FDF0:
+  1139 FDF0 15		                dcr     d               ; CODE XREF: FDE8j
+  1140 FDF1 09		                dad     b
+  1141 FDF2 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FDF3:
+  1145 FDF3 7D		                mov     a, l            ; CODE XREF: FCFEj
+  1146 FDF4 93		                sub     e
+  1147 FDF5 D2 F9 FD	                jnc     loc_0_FDF9
+  1148 FDF8 25		                dcr     h
+			
+			loc_0_FDF9:
+  1151 FDF9 6F		                mov     l, a            ; CODE XREF: FDF5j
+  1152 FDFA 1E 08	                mvi     e, 8
+  1153 FDFC 01 08 00	                lxi     b, 8
+  1154 FDFF 09		                dad     b
+  1155 FE00 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_kbhit:
+  1159 FE01 3A 02 80	                lda     8002h           ; CODE XREF: F812j FCBEp FE63p
+  1160 FE04 E6 80	                ani     80h
+  1161 FE06 CA 0E FE	                jz      loc_0_FE0E      ; Repeat now ?
+  1162 FE09 3A 05 76	                lda     7605h           ; Get last key
+  1163 FE0C B7		                ora     a               ; Check for 0 now
+  1164 FE0D C0		                rnz
+			
+			loc_0_FE0E:
+  1167 FE0E E5		                push    h               ; CODE XREF: FE06j
+  1168 FE0F 2A 09 76	                lhld    7609h
+  1169 FE12 CD 72 FE	                call    entry_scan_kbd      ; Scan -- FF - not
+			                                            ;         FE - rus/lat
+			                                            ;         xx - key
+  1172 FE15 BD		                cmp     l
+  1173 FE16 6F		                mov     l, a
+  1174 FE17 CA 2A FE	                jz      loc_0_FE2A
+			
+			loc_0_FE1A:
+  1177 FE1A 3E 01	                mvi     a, 1            ; CODE XREF: FE60j
+  1178 FE1C 32 0B 76	                sta     760Bh
+  1179 FE1F 26 15	                mvi     h, 15h
+			
+			loc_0_FE21:
+  1182 FE21 AF		                xra     a               ; CODE XREF: FE2Bj
+			
+			loc_0_FE22:
+  1185 FE22 22 09 76	                shld    7609h           ; CODE XREF: FE2Fj FE4Ej
+  1186 FE25 E1		                pop     h
+  1187 FE26 32 05 76	                sta     7605h
+  1188 FE29 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FE2A:
+  1192 FE2A 25		                dcr     h               ; CODE XREF: FE17j
+  1193 FE2B C2 21 FE	                jnz     loc_0_FE21
+  1194 FE2E 3C		                inr     a
+  1195 FE2F CA 22 FE	                jz      loc_0_FE22
+  1196 FE32 3C		                inr     a
+  1197 FE33 CA 51 FE	                jz      loc_0_FE51
+  1198 FE36 C5		                push    b
+  1199 FE37 01 03 50	                lxi     b, 5003h
+  1200 FE3A CD 27 FD	                call    loc_0_FD27
+  1201 FE3D C1		                pop     b
+  1202 FE3E 3A 0B 76	                lda     760Bh
+  1203 FE41 26 E0	                mvi     h, 0E0h
+  1204 FE43 3D		                dcr     a
+  1205 FE44 32 0B 76	                sta     760Bh
+  1206 FE47 CA 4C FE	                jz      loc_0_FE4C
+  1207 FE4A 26 40	                mvi     h, 40h
+			
+			loc_0_FE4C:
+  1210 FE4C 3E FF	                mvi     a, 0FFh         ; CODE XREF: FE47j
+  1211 FE4E C3 22 FE	                jmp     loc_0_FE22
+			; --------------------------------------------------------------
+			
+			loc_0_FE51:
+  1215 FE51 3A 02 80	                lda     8002h           ; CODE XREF: FE33j FE56j
+  1216 FE54 E6 80	                ani     80h
+  1217 FE56 CA 51 FE	                jz      loc_0_FE51
+  1218 FE59 3A 06 76	                lda     ruslat_flag
+  1219 FE5C 2F		                cma
+  1220 FE5D 32 06 76	                sta     ruslat_flag
+  1221 FE60 C3 1A FE	                jmp     loc_0_FE1A
+			; --------------------------------------------------------------
+			
+			entry_getc:
+  1225 FE63 CD 01 FE	                call    entry_kbhit      ; CODE XREF: F803j FE67j
+  1226 FE66 B7		                ora     a
+  1227 FE67 CA 63 FE	                jz      entry_getc
+  1228 FE6A AF		                xra     a
+  1229 FE6B 32 05 76	                sta     7605h
+  1230 FE6E 3A 09 76	                lda     7609h
+  1231 FE71 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_scan_kbd:
+  1235 FE72 3A 02 80	                lda     8002h           ; CODE XREF: F81Bj F9A4p FE12p
+  1236 FE75 E6 80	                ani     80h             ; rus/lat ?
+  1237 FE77 C2 7D FE	                jnz     loc_0_FE7D
+  1238 FE7A 3E FE	                mvi     a, 0FEh         ; yes
+  1239 FE7C C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FE7D:
+  1243 FE7D AF		                xra     a               ; CODE XREF: FE77j
+  1244 FE7E 32 00 80	                sta     8000h
+  1245 FE81 32 02 80	                sta     8002h
+  1246 FE84 3A 06 76	                lda     ruslat_flag
+  1247 FE87 E6 01	                ani     1
+  1248 FE89 F6 06	                ori     6
+  1249 FE8B 32 03 80	                sta     8003h
+  1250 FE8E 3A 01 80	                lda     8001h
+  1251 FE91 3C		                inr     a
+  1252 FE92 C2 97 FE	                jnz     loc_0_FE97
+  1253 FE95 3D		                dcr     a
+  1254 FE96 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FE97:
+  1258 FE97 E5		                push    h               ; CODE XREF: FE92j
+  1259 FE98 2E 01	                mvi     l, 1            ; flying '1'
+  1260 FE9A 26 07	                mvi     h, 7            ; testing of 8 lines
+			                                        ; from 8 to 1
+			
+			loc_0_FE9C:
+  1264 FE9C 7D		                mov     a, l            ; CODE XREF: FEACj
+  1265 FE9D 0F		                rrc
+  1266 FE9E 6F		                mov     l, a
+  1267 FE9F 2F		                cma
+  1268 FEA0 32 00 80	                sta     8000h
+  1269 FEA3 3A 01 80	                lda     8001h
+  1270 FEA6 2F		                cma
+  1271 FEA7 B7		                ora     a
+  1272 FEA8 C2 B3 FE	                jnz     loc_0_FEB3
+  1273 FEAB 25		                dcr     h
+  1274 FEAC F2 9C FE	                jp      loc_0_FE9C
+			
+			loc_0_FEAF:
+  1277 FEAF 3E FF	                mvi     a, 0FFh         ; CODE XREF: FEBAj
+  1278 FEB1 E1		                pop     h
+  1279 FEB2 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FEB3:
+  1283 FEB3 2E 20	                mvi     l, 20h ; ' '    ; CODE XREF: FEA8j
+			
+			loc_0_FEB5:
+  1286 FEB5 3A 01 80	                lda     8001h           ; CODE XREF: FEBEj
+  1287 FEB8 2F		                cma
+  1288 FEB9 B7		                ora     a
+  1289 FEBA CA AF FE	                jz      loc_0_FEAF
+  1290 FEBD 2D		                dcr     l
+  1291 FEBE C2 B5 FE	                jnz     loc_0_FEB5
+  1292 FEC1 2E 08	                mvi     l, 8
+			
+			loc_0_FEC3:
+  1295 FEC3 2D		                dcr     l               ; CODE XREF: FEC5j
+  1296 FEC4 07		                rlc
+  1297 FEC5 D2 C3 FE	                jnc     loc_0_FEC3
+  1298 FEC8 7C		                mov     a, h
+  1299 FEC9 65		                mov     h, l
+  1300 FECA 6F		                mov     l, a
+  1301 FECB FE 01	                cpi     1
+  1302 FECD CA FA FE	                jz      loc_0_FEFA
+  1303 FED0 DA F3 FE	                jc      loc_0_FEF3
+  1304 FED3 07		                rlc
+  1305 FED4 07		                rlc
+  1306 FED5 07		                rlc
+  1307 FED6 C6 20	                adi     20h ; ' '
+  1308 FED8 B4		                ora     h
+  1309 FED9 FE 5F	                cpi     5Fh ; '_'
+  1310 FEDB C2 06 FF	                jnz     loc_0_FF06
+  1311 FEDE 3E 20	                mvi     a, 20h ; ' '
+  1312 FEE0 E1		                pop     h
+  1313 FEE1 C9		                ret
+			; --------------------------------------------------------------
+  1315 FEE2		unk_0_FEE2:     db    9 ;
+            09 
+  1316 FEE3		                db 0Ah, 0Dh, 7Fh, 8, 19h, 18h, 1Ah
+            0A 0D 7F 08 
+            19 18 1A 
+  1317 FEEA		byte_0_FEEA:    db 0Ch, 1Fh, 1Bh
+            0C 1F 1B 
+  1318 FEED		                db 0, 1, 2, 3, 4, 5
+            00 01 02 03 
+            04 05 
+			; --------------------------------------------------------------
+			
+			loc_0_FEF3:
+  1322 FEF3 7C		                mov     a, h            ; CODE XREF: FED0j
+  1323 FEF4 21 EA FE	                lxi     h, byte_0_FEEA
+  1324 FEF7 C3 FE FE	                jmp     loc_0_FEFE
+			; --------------------------------------------------------------
+			
+			loc_0_FEFA:
+  1328 FEFA 7C		                mov     a, h            ; CODE XREF: FECDj
+  1329 FEFB 21 E2 FE	                lxi     h, unk_0_FEE2
+			
+			loc_0_FEFE:
+  1332 FEFE 85		                add     l               ; CODE XREF: FEF7j
+  1333 FEFF 6F		                mov     l, a
+  1334 FF00 7E		                mov     a, m
+  1335 FF01 FE 40	                cpi     40h ; '@'
+  1336 FF03 E1		                pop     h
+  1337 FF04 D8		                rc
+  1338 FF05 E5		                push    h
+			
+			loc_0_FF06:
+  1341 FF06 6F		                mov     l, a            ; CODE XREF: FEDBj
+  1342 FF07 3A 02 80	                lda     8002h
+  1343 FF0A 67		                mov     h, a
+  1344 FF0B E6 40	                ani     40h
+  1345 FF0D C2 1A FF	                jnz     loc_0_FF1A
+  1346 FF10 7D		                mov     a, l
+  1347 FF11 FE 40	                cpi     40h ; '@'
+  1348 FF13 FA 3F FF	                jm      loc_0_FF3F
+  1349 FF16 E6 1F	                ani     1Fh
+  1350 FF18 E1		                pop     h
+  1351 FF19 C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FF1A:
+  1355 FF1A 3A 06 76	                lda     ruslat_flag           ; CODE XREF: FF0Dj
+  1356 FF1D B7		                ora     a
+  1357 FF1E CA 2A FF	                jz      loc_0_FF2A
+  1358 FF21 7D		                mov     a, l
+  1359 FF22 FE 40	                cpi     40h ; '@'
+  1360 FF24 FA 2A FF	                jm      loc_0_FF2A
+  1361 FF27 F6 20	                ori     20h
+  1362 FF29 6F		                mov     l, a
+			
+			loc_0_FF2A:
+  1365 FF2A 7C		                mov     a, h            ; CODE XREF: FF1Ej FF24j
+  1366 FF2B E6 20	                ani     20h
+  1367 FF2D C2 3F FF	                jnz     loc_0_FF3F
+  1368 FF30 7D		                mov     a, l
+  1369 FF31 FE 40	                cpi     40h ; '@'
+  1370 FF33 FA 3B FF	                jm      loc_0_FF3B
+  1371 FF36 7D		                mov     a, l
+  1372 FF37 EE 20	                xri     20h
+  1373 FF39 E1		                pop     h
+  1374 FF3A C9		                ret
+			; --------------------------------------------------------------
+			
+			loc_0_FF3B:
+  1378 FF3B 7D		                mov     a, l            ; CODE XREF: FF33j
+  1379 FF3C E6 2F	                ani     2Fh
+  1380 FF3E 6F		                mov     l, a
+			
+			loc_0_FF3F:
+  1383 FF3F 7D		                mov     a, l            ; CODE XREF: FF13j FF2Dj
+  1384 FF40 FE 40	                cpi     40h ; '@'
+  1385 FF42 E1		                pop     h
+  1386 FF43 F0		                rp
+  1387 FF44 E5		                push    h
+  1388 FF45 6F		                mov     l, a
+  1389 FF46 E6 0F	                ani     0Fh
+  1390 FF48 FE 0C	                cpi     0Ch
+  1391 FF4A 7D		                mov     a, l
+  1392 FF4B FA 50 FF	                jm      loc_0_FF50
+  1393 FF4E EE 10	                xri     10h
+			
+			loc_0_FF50:
+  1396 FF50 E1		                pop     h               ; CODE XREF: FF4Bj
+  1397 FF51 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_getlim:
+  1401 FF52 2A 31 76	                lhld    memlim           ; CODE XREF: F830j
+  1402 FF55 C9		                ret
+			; --------------------------------------------------------------
+			
+			entry_setlim:
+  1406 FF56 22 31 76	                shld    memlim           ; CODE XREF: F833j
+  1407 FF59 C9		                ret
+			; --------------------------------------------------------------
+  1409 FF5A		RadioPrompt:    db  1Fh ;
+            1F 
+  1410 FF5B		m_Radio86rk:    db "radio-86rk"      ; CODE XREF: F8F3p
+            72 61 64 69 
+            6F 2D 38 36 
+            72 6B 
+  1411 FF65		                db 0
+            00 
+  1412 FF66		Prompt:         dw 0A0Dh
+            0D0A 
+  1413 FF68		m_FF68:         db "-->"
+            2D 2D 3E 
+  1414 FF6B		                db 0
+            00 
+  1415 FF6C		m_FF6C:         dw 0A0Dh
+            0D0A 
+  1416 FF6E		                db 18h, 18h, 18h, 18h, 0   ; -> -> -> ->
+            18 18 18 18 
+            00 
+  1417 FF73		Regs:           dw 0A0Dh
+            0D0A 
+  1418 FF75		m_Pc:           db " PC-"
+            20 50 43 2D 
+            
+  1419 FF79		                dw 0A0Dh
+            0D0A 
+  1420 FF7B		m_Hl:           db " HL-"
+            20 48 4C 2D 
+            
+  1421 FF7F		                dw 0A0Dh
+            0D0A 
+  1422 FF81		m_Bc:           db " BC-"
+            20 42 43 2D 
+            
+  1423 FF85		                dw 0A0Dh
+            0D0A 
+  1424 FF87		m_De:           db " DE-"
+            20 44 45 2D 
+            
+  1425 FF8B		                dw 0A0Dh
+            0D0A 
+  1426 FF8D		m_Sp:           db " SP-"
+            20 53 50 2D 
+            
+  1427 FF91		                dw 0A0Dh
+            0D0A 
+  1428 FF93		m_Af:           db " AF-"
+            20 41 46 2D 
+            
+  1429 FF97		                db 19h, 19h, 19h, 19h, 19h, 19h, 0
+            19 19 19 19 
+            19 19 00 
+  1430 FF9E		BackClr:        db 8, 20h, 8, 0
+            08 20 08 00 
+            
+			; --------------------------------------------------------------
+			
+			loc_0_FFA2:
+  1434 FFA2 22 16 76	                shld    7616h
+  1435 FFA5 F5		                push    psw
+  1436 FFA6 E1		                pop     h
+  1437 FFA7 22 1E 76	                shld    761Eh
+  1438 FFAA E1		                pop     h
+  1439 FFAB 2B		                dcx     h
+  1440 FFAC 22 14 76	                shld    7614h
+  1441 FFAF 21 00 00	                lxi     h, 0
+  1442 FFB2 39		                dad     sp
+  1443 FFB3 31 1E 76	                lxi     sp, 761Eh
+  1444 FFB6 E5		                push    h
+  1445 FFB7 D5		                push    d
+  1446 FFB8 C5		                push    b
+  1447 FFB9 2A 14 76	                lhld    7614h
+  1448 FFBC 31 CF 76	                lxi     sp, stack
+  1449 FFBF CD 78 FB	                call    loc_0_FB78
+  1450 FFC2 EB		                xchg
+  1451 FFC3 2A 23 76	                lhld    7623h
+  1452 FFC6 CD 90 F9	                call    cmp_hl_de
+  1453 FFC9 C2 6C F8	                jnz     prompt_loop
+  1454 FFCC 3A 25 76	                lda     7625h
+  1455 FFCF 77		                mov     m, a
+  1456 FFD0 C3 6C F8	                jmp     prompt_loop
+			; --------------------------------------------------------------
+			
+			print_regs:
+  1460 FFD3 21 73 FF	                lxi     h, Regs         ; CODE XREF: F889j
+  1461 FFD6 CD 22 F9	                call    entry_puts
+  1462 FFD9 21 14 76	                lxi     h, 7614h
+  1463 FFDC 06 06	                mvi     b, 6
+			
+			loc_0_FFDE:
+  1466 FFDE 5E		                mov     e, m            ; CODE XREF: FFFAj
+  1467 FFDF 23		                inx     h
+  1468 FFE0 56		                mov     d, m
+  1469 FFE1 C5		                push    b
+  1470 FFE2 E5		                push    h
+  1471 FFE3 EB		                xchg
+  1472 FFE4 CD 78 FB	                call    loc_0_FB78
+  1473 FFE7 CD EE F8	                call    loc_0_F8EE
+  1474 FFEA D2 F6 FF	                jnc     loc_0_FFF6
+  1475 FFED CD 5A F9	                call    loc_0_F95A
+  1476 FFF0 D1		                pop     d
+  1477 FFF1 D5		                push    d
+  1478 FFF2 EB		                xchg
+  1479 FFF3 72		                mov     m, d
+  1480 FFF4 2B		                dcx     h
+  1481 FFF5 73		                mov     m, e
+			
+			loc_0_FFF6:
+  1484 FFF6 E1		                pop     h               ; CODE XREF: FFEAj
+  1485 FFF7 C1		                pop     b
+  1486 FFF8 05		                dcr     b
+  1487 FFF9 23		                inx     h
+  1488 FFFA C2 DE FF	                jnz     loc_0_FFDE
+  1489 FFFD C9		                ret
+			; --------------------------------------------------------------
+  1491 FFFE		                dw 0FFFFh              ; junk
+            FFFF 
+			
+			                end
+
+
+*******************************************************************************
+                                 Symbols table
+*******************************************************************************
+
+Names			Types	Values
+-----			-----	------
+vid_mem			EQU	076D0h
+stack			EQU	076CFh
+monitor_area		EQU	07600h
+monitor_area_end	EQU	0765Fh
+cursor_addr		EQU	07600h
+cursor_xy		EQU	07602h
+cursor_seq		EQU	07604h
+ruslat_flag		EQU	07606h
+stack_ptr		EQU	0761Ch
+memlim			EQU	07631h
+kbd_buf			EQU	07633h
+start			Label	0F800h
+getc			Label	0F803h
+inpb			Label	0F806h
+putc			Label	0F809h
+outb			Label	0F80Ch
+temp			Label	0F80Fh
+kbhit			Label	0F812h
+hexb			Label	0F815h
+puts			Label	0F818h
+scan_kbd		Label	0F81Bh
+getxy			Label	0F81Eh
+curc			Label	0F821h
+inpblock		Label	0F824h
+outblock		Label	0F827h
+chksum			Label	0F82Ah
+video			Label	0F82Dh
+getlim			Label	0F830h
+setlim			Label	0F833h
+entry_start		Label	0F836h
+prompt_loop		Label	0F86Ch
+back_kbd_buf		Label	0F8DCh
+loc_0_F8EE		Label	0F8EEh
+loc_0_F8F1		Label	0F8F1h
+kbd_buf_loop		Label	0F8F3h
+loc_0_F91A		Label	0F91Ah
+entry_puts		Label	0F922h
+loc_0_F92C		Label	0F92Ch
+loc_0_F95A		Label	0F95Ah
+loc_0_F95D		Label	0F95Dh
+loc_0_F982		Label	0F982h
+loc_0_F98E		Label	0F98Eh
+cmp_hl_de		Label	0F990h
+loc_0_F996		Label	0F996h
+cmp_hl_de_loop		Label	0F999h
+loc_0_F99F		Label	0F99Fh
+loc_0_F9A2		Label	0F9A2h
+loc_0_F9A4		Label	0F9A4h
+loc_0_F9B0		Label	0F9B0h
+loc_0_F9B9		Label	0F9B9h
+loc_0_F9BA		Label	0F9BAh
+loc_0_F9C5		Label	0F9C5h
+loc_0_F9C8		Label	0F9C8h
+loc_0_F9D7		Label	0F9D7h
+loc_0_F9E6		Label	0F9E6h
+fill_hl_de_c		Label	0F9EDh
+loc_0_F9F4		Label	0F9F4h
+loc_0_F9FF		Label	0F9FFh
+loc_0_FA08		Label	0FA08h
+loc_0_FA0B		Label	0FA0Bh
+loc_0_FA15		Label	0FA15h
+loc_0_FA17		Label	0FA17h
+loc_0_FA26		Label	0FA26h
+loc_0_FA3B		Label	0FA3Bh
+loc_0_FA3F		Label	0FA3Fh
+loc_0_FA5A		Label	0FA5Ah
+loc_0_FA68		Label	0FA68h
+loc_0_FA6D		Label	0FA6Dh
+entry_getxy		Label	0FA7Bh
+entry_curc		Label	0FA7Fh
+loc_0_FA86		Label	0FA86h
+loc_0_FA91		Label	0FA91h
+loc_0_FAAE		Label	0FAAEh
+entry_inpblock		Label	0FAB6h
+entry_video		Label	0FACEh
+loc_0_FAE1		Label	0FAE1h
+loc_0_FAFD		Label	0FAFDh
+loc_0_FAFF		Label	0FAFFh
+loc_0_FB05		Label	0FB05h
+loc_0_FB0A		Label	0FB0Ah
+entry_chksum		Label	0FB16h
+loc_0_FB19		Label	0FB19h
+loc_0_FB2D		Label	0FB2Dh
+loc_0_FB35		Label	0FB35h
+entry_outblock		Label	0FB49h
+loc_0_FB4D		Label	0FB4Dh
+loc_0_FB78		Label	0FB78h
+loc_0_FB86		Label	0FB86h
+loc_0_FB90		Label	0FB90h
+entry_inpb		Label	0FB98h
+loc_0_FB9C		Label	0FB9Ch
+loc_0_FBB7		Label	0FBB7h
+loc_0_FBBF		Label	0FBBFh
+loc_0_FBDC		Label	0FBDCh
+loc_0_FBDD		Label	0FBDDh
+loc_0_FBFF		Label	0FBFFh
+loc_0_FC09		Label	0FC09h
+loc_0_FC0B		Label	0FC0Bh
+loc_0_FC34		Label	0FC34h
+entry_outb		Label	0FC46h
+loc_0_FC58		Label	0FC58h
+loc_0_FC66		Label	0FC66h
+loc_0_FC7A		Label	0FC7Ah
+loc_0_FC7B		Label	0FC7Bh
+loc_0_FCA1		Label	0FCA1h
+entry_hexb		Label	0FCA5h
+hexb_tetr		Label	0FCAEh
+hexb_make_sym		Label	0FCB7h
+loc_0_FCB9		Label	0FCB9h
+entry_putc		Label	0FCBAh
+loc_0_FCDD		Label	0FCDDh
+loc_0_FCE9		Label	0FCE9h
+loc_0_FCEA		Label	0FCEAh
+loc_0_FCEE		Label	0FCEEh
+locret_0_FCFE		Label	0FCFEh
+locret_0_FD03		Label	0FD03h
+loc_0_FD27		Label	0FD27h
+loc_0_FD28		Label	0FD28h
+loc_0_FD2E		Label	0FD2Eh
+loc_0_FD38		Label	0FD38h
+loc_0_FD47		Label	0FD47h
+loc_0_FD58		Label	0FD58h
+loc_0_FD65		Label	0FD65h
+loc_0_FD73		Label	0FD73h
+loc_0_FD77		Label	0FD77h
+loc_0_FD85		Label	0FD85h
+loc_0_FD96		Label	0FD96h
+loc_0_FD9E		Label	0FD9Eh
+loc_0_FDA3		Label	0FDA3h
+loc_0_FDA9		Label	0FDA9h
+loc_0_FDB2		Label	0FDB2h
+loc_0_FDB9		Label	0FDB9h
+loc_0_FDC5		Label	0FDC5h
+loc_0_FDD3		Label	0FDD3h
+loc_0_FDD6		Label	0FDD6h
+loc_0_FDE2		Label	0FDE2h
+loc_0_FDF0		Label	0FDF0h
+loc_0_FDF3		Label	0FDF3h
+loc_0_FDF9		Label	0FDF9h
+entry_kbhit		Label	0FE01h
+loc_0_FE0E		Label	0FE0Eh
+loc_0_FE1A		Label	0FE1Ah
+loc_0_FE21		Label	0FE21h
+loc_0_FE22		Label	0FE22h
+loc_0_FE2A		Label	0FE2Ah
+loc_0_FE4C		Label	0FE4Ch
+loc_0_FE51		Label	0FE51h
+entry_getc		Label	0FE63h
+entry_scan_kbd		Label	0FE72h
+loc_0_FE7D		Label	0FE7Dh
+loc_0_FE97		Label	0FE97h
+loc_0_FE9C		Label	0FE9Ch
+loc_0_FEAF		Label	0FEAFh
+loc_0_FEB3		Label	0FEB3h
+loc_0_FEB5		Label	0FEB5h
+loc_0_FEC3		Label	0FEC3h
+unk_0_FEE2		Label	0FEE2h
+byte_0_FEEA		Label	0FEEAh
+loc_0_FEF3		Label	0FEF3h
+loc_0_FEFA		Label	0FEFAh
+loc_0_FEFE		Label	0FEFEh
+loc_0_FF06		Label	0FF06h
+loc_0_FF1A		Label	0FF1Ah
+loc_0_FF2A		Label	0FF2Ah
+loc_0_FF3B		Label	0FF3Bh
+loc_0_FF3F		Label	0FF3Fh
+loc_0_FF50		Label	0FF50h
+entry_getlim		Label	0FF52h
+entry_setlim		Label	0FF56h
+RadioPrompt		Label	0FF5Ah
+m_Radio86rk		Label	0FF5Bh
+Prompt			Label	0FF66h
+m_FF68			Label	0FF68h
+m_FF6C			Label	0FF6Ch
+Regs			Label	0FF73h
+m_Pc			Label	0FF75h
+m_Hl			Label	0FF7Bh
+m_Bc			Label	0FF81h
+m_De			Label	0FF87h
+m_Sp			Label	0FF8Dh
+m_Af			Label	0FF93h
+BackClr			Label	0FF9Eh
+loc_0_FFA2		Label	0FFA2h
+print_regs		Label	0FFD3h
+loc_0_FFDE		Label	0FFDEh
+loc_0_FFF6		Label	0FFF6h
+
+Statistics
+----------
+"Name"	= 0
+"EQU"	= 11
+"SET"	= 0
+Labels	= 175
+
+
