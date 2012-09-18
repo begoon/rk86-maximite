@@ -19,13 +19,13 @@ Two compression libraries were discovered:
 The selection criteria were:
 
 * a single source library without any dependecies
-* scrict ANSI C (I use the Microchip XC32 compilers)
+* scrict ANSI C (I use the Microchip XC32 compiler)
 * in-memory decompression
 * a small amount of static temporary memory for decompression
   (no malloc/calloc) (ideally, it should use the output decompression
   buffer only)
 
-On my data miniz provides the 0.78 compress ratio and minilzo provides 0.71.
+On my data miniz provides the 0.78 compression ratio and minilzo provides 0.71.
 So, both don't squeeze my data into the 512KB flash of PIC32.
 
 ### Overall impression
