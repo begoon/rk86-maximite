@@ -25,13 +25,13 @@ The selection criteria were:
   (no malloc/calloc) (ideally, it should use the output decompression
   buffer only)
 
-On my data miniz provides 0.78 compress ratio and minilzo provides 0.71. So,
-both don't squeeze my data into the PIC32 flash.
+On my data miniz provides the 0.78 compress ratio and minilzo provides 0.71.
+So, both don't squeeze my data into the 512KB flash of PIC32.
 
 ### Overall impression
 
-* miniz is slightly easier to use from the API perspective.
+* miniz is slightly easier to use from the API perspective
 * minilzo provides better compression
 
-Also miniz use **only** the output buffer for decompression, but minilzo
+Also miniz uses **only** the output buffer for decompression, but minilzo
 requries at least 16K static buffer.
