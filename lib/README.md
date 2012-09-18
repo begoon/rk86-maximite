@@ -25,7 +25,7 @@ The selection criteria were:
   (no malloc/calloc) (ideally, it should use the output decompression
   buffer only)
 
-On my data miniz provides 0.71 compress ratio and minilzo provides 0.78. So,
+On my data miniz provides 0.78 compress ratio and minilzo provides 0.71. So,
 both don't squeeze my data into the PIC32 flash.
 
 ### Overall impression
