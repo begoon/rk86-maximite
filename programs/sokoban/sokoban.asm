@@ -25,6 +25,9 @@ selector_cls:
   mvi c, 1fh
   call monitor_putchar
 
+  lxi h, copyright_msg
+  call monitor_putstr
+
 selector:
   lxi h, number_of_maze_msg
   call monitor_putstr
@@ -439,6 +442,13 @@ congratulations_msg:
 congratulations_text:
   db "pozdrawlq` !!!"
 congratulations_msg_sz equ $-congratulations_text
+  db 0
+
+copyright_msg:
+  db 1fh, 1bh, 59h, 23 + 20h, (64-copyright_msg_sz)/2 + 20h
+copyright_text:
+  db "sokoban, awtor aleksandr demin, (C) 2012"
+copyright_msg_sz equ $-copyright_text
   db 0
 
 levels:
