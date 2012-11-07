@@ -9,7 +9,7 @@ DEFINES = -DMAXIMITE -DPIC32MX795F512L_PIM
 ifeq ($(OS),Windows_NT)
   XC32_HOME = c:/xc32
 else
-  XC32_HOME = /Applications/microchip/xc32/v1.00
+  XC32_HOME = /Applications/microchip/xc32/v1.11
 endif
 
 XC32_PREFIX=$(XC32_HOME)/bin/xc32
