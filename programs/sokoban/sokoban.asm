@@ -72,13 +72,13 @@ game_inkey:
   ora a
   jz end_game
   call monitor_inkey
-  lxi d, -1
+  lxi d, 0ffffh   ; -1
   cpi 8
   jz move
   lxi d, 1
   cpi 18h
   jz move
-  lxi d, -4Eh
+  lxi d, 0ffb2h   ; -4eh 
   cpi 19h
   jz move
   lxi d, 4eh
